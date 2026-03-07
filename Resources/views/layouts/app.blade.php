@@ -63,5 +63,11 @@
 
     {{-- Page-specific content --}}
     @yield('skyops-content')
+
+    {{-- Footer --}}
+    <div class="so-footer">
+        <a href="https://github.com/MANFahrer-GF/phpvms-SkyOps" target="_blank" title="SkyOps on GitHub">SkyOps</a>
+        — crafted with <span class="so-heart">♥</span> in Germany by Thomas Kant
+    </div>
 </div>
 @endsection

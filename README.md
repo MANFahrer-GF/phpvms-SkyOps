@@ -146,11 +146,14 @@ SkyOps auto-detects the language from your phpVMS configuration — no manual se
 
 Modified BSD 3-Clause — see [LICENSE](LICENSE) for details.
 
-Copyright © 2025 German Sky Group
+Copyright © 2025 Thomas Kant / German Sky Group
 
 ---
 
 ## Credits
 
+Crafted with ♥ in Germany by Thomas Kant.
 Built for [phpVMS 7](https://phpvms.net) by Nabeel Shahzad.
 Inspired by the phpVMS community and [Disposable Hero Addons](https://github.com/FatihKoz) by B.Fatih KOZ.
+
+Special thanks to **ProAvia** for extensive testing, bug reports, and valuable feedback during development.

@@ -196,4 +196,12 @@ html.ap-light .so-count{color:#1d4ed8;background:rgba(59,130,246,.1);border-colo
     .so-input,.so-select{width:100%}
     .so-stat-grid{grid-template-columns:repeat(2,1fr)}
 }
+
+/* Footer */
+.so-footer{text-align:center;padding:1.5rem 0 .5rem;font-size:.7rem;color:var(--ap-text-muted);opacity:.45;transition:opacity .3s;letter-spacing:.02em}
+.so-footer:hover{opacity:.85}
+.so-footer a{color:var(--ap-text-muted);text-decoration:none;font-weight:600}
+.so-footer a:hover{color:var(--ap-accent);text-decoration:underline}
+.so-heart{color:#e25555;font-size:.75rem;display:inline-block;animation:so-pulse 1.8s ease-in-out infinite}
+@keyframes so-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
 </style>
