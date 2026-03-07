@@ -1,0 +1,27 @@
+{
+    "name": "germansky/skyops",
+    "type": "phpvms-module",
+    "description": "Sky Operations Center for phpVMS 7 — PIREPs, Fleet, Pilot Statistics, Airlines, Departures",
+    "keywords": ["phpvms", "module", "pireps", "fleet", "pilots", "airlines", "flights", "statistics"],
+    "license": "BSD-3-Clause",
+    "homepage": "https://github.com/MANFahrer-GF/phpvms-SkyOps",
+    "authors": [
+        {
+            "name": "German Sky Group",
+            "homepage": "https://github.com/MANFahrer-GF"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Modules\\SkyOps\\": ""
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Modules\\SkyOps\\Providers\\SkyOpsServiceProvider"
+            ]
+        }
+    }
+}
