@@ -6,6 +6,21 @@
 @php
     use Modules\SkyOps\Helpers\SkyOpsHelper;
     use Modules\SkyOps\Helpers\UnitHelper;
+    use Carbon\Carbon;
+
+    // Compute effective epoch (same logic as PilotStatsService)
+    $epochConfig = config('skyops.epoch');
+    $phpvmsStart = setting('general.start_date');
+    if ($epochConfig) {
+        $epochEffective = Carbon::parse($epochConfig)->toDateString();
+        $epochSource = 'config';
+    } elseif ($phpvmsStart) {
+        $epochEffective = Carbon::parse($phpvmsStart)->toDateString();
+        $epochSource = 'phpvms';
+    } else {
+        $epochEffective = '2000-01-01';
+        $epochSource = 'fallback';
+    }
 
     // Read live config for admin section
     $cfg = [
@@ -33,23 +48,40 @@
         'cache_airlines'=> config('skyops.cache_ttl.airline_overview', 10),
         'cache_fleet'   => config('skyops.cache_ttl.fleet_stats', 5),
         'cache_filters' => config('skyops.cache_ttl.filter_options', 15),
-        'epoch'         => config('skyops.epoch'),
+        'epoch'         => $epochConfig,
+        'epoch_effective' => $epochEffective,
+        'epoch_source'  => $epochSource,
+        'phpvms_start'  => $phpvmsStart,
         'locale'        => app()->getLocale() ?? 'en',
         'currency'      => UnitHelper::currencySymbol(),
         'dist_unit'     => UnitHelper::label('distance'),
         'fuel_unit'     => UnitHelper::label('fuel'),
+        // Theme
+        'glass_mode'       => config('skyops.theme.glass_mode', true),
+        'solid_bg_dark'    => config('skyops.theme.solid.card_bg_dark', '#1e293b'),
+        'solid_bg_light'   => config('skyops.theme.solid.card_bg_light', '#ffffff'),
+        'solid_inner_dark' => config('skyops.theme.solid.inner_bg_dark', '#151b2b'),
+        'solid_inner_light'=> config('skyops.theme.solid.inner_bg_light', '#f8fafc'),
+        'solid_border_dark'  => config('skyops.theme.solid.border_dark', 'rgba(255,255,255,0.08)'),
+        'solid_border_light' => config('skyops.theme.solid.border_light', 'rgba(0,0,0,0.08)'),
     ];
 @endphp
 
 <style>
 /* ── Guide — so-gd-* prefix ── */
+/* All guide surfaces use CSS variables from _styles.blade.php */
+/* Glass mode: automatic backdrop-filter via .so-glass selector in _styles */
+/* Solid mode: uses configured colors from config.php */
+
 .so-gd-hero{font-weight:800;font-size:1.5rem;letter-spacing:-.02em;color:var(--ap-text-head);display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .so-gd-sub{font-size:.72rem;color:var(--ap-muted);margin-bottom:20px}
 
 /* TOC */
 .so-gd-toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:32px}
-.so-gd-toc a{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--ap-surface);border:1px solid var(--ap-border);border-radius:10px;text-decoration:none;color:var(--ap-text-head);font-size:.82rem;font-weight:600;transition:border-color .15s,transform .1s}
+.so-gd-toc a{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--ap-surface);border:1px solid var(--ap-border);border-radius:10px;text-decoration:none;color:var(--ap-text-head);font-size:.82rem;font-weight:600;transition:border-color .15s,transform .1s,box-shadow .15s}
 .so-gd-toc a:hover{border-color:var(--ap-blue);transform:translateY(-1px);color:var(--ap-text-head);text-decoration:none}
+html.ap-light .so-gd-toc a{box-shadow:0 1px 4px rgba(0,0,0,.04)}
+html.ap-light .so-gd-toc a:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .so-gd-toc-icon{font-size:1rem;flex-shrink:0;width:22px;text-align:center}
 .so-gd-toc-tag{font-size:.52rem;font-weight:700;padding:2px 6px;border-radius:4px;color:#fff;margin-left:auto;text-transform:uppercase;flex-shrink:0}
 .so-gd-toc-tag-admin{background:var(--ap-amber)}
@@ -57,7 +89,7 @@
 
 /* Sections */
 .so-gd-section{margin-bottom:36px;scroll-margin-top:80px}
-.so-gd-h2{font-weight:800;font-size:1.15rem;color:var(--ap-text-head);display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--ap-border)}
+.so-gd-h2{font-weight:800;font-size:1.1rem;color:var(--ap-text-head);display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:14px 18px;background:var(--ap-surface);border:1px solid var(--ap-border);border-radius:12px}
 .so-gd-box{background:var(--ap-surface);border:1px solid var(--ap-border);border-radius:12px;padding:16px 20px;margin-bottom:14px;font-size:.82rem;line-height:1.7;color:var(--ap-text)}
 .so-gd-box p{margin:0 0 12px}
 .so-gd-box p:last-child{margin-bottom:0}
@@ -89,6 +121,7 @@ html.ap-light .so-gd-live-val{background:rgba(59,130,246,.08)}
 
 /* Config display */
 .so-gd-cfg{background:var(--ap-surface);border:1px solid var(--ap-border);border-radius:12px;overflow:hidden;margin:12px 0}
+html.ap-light .so-gd-cfg{box-shadow:0 1px 6px rgba(0,0,0,.05)}
 .so-gd-cfg-header{padding:10px 16px;background:rgba(59,130,246,.06);border-bottom:1px solid var(--ap-border);font-size:.72rem;font-weight:700;color:var(--ap-muted);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:8px}
 .so-gd-cfg-header .so-gd-cfg-live{font-size:.58rem;padding:2px 6px;border-radius:4px;background:var(--ap-green);color:#fff;font-weight:700;text-transform:uppercase;margin-left:auto}
 .so-gd-cfg-row{display:flex;align-items:center;padding:8px 16px;border-bottom:1px solid var(--ap-border);font-size:.78rem;gap:8px}
@@ -99,9 +132,11 @@ html.ap-light .so-gd-live-val{background:rgba(59,130,246,.08)}
 .so-gd-cfg-desc{color:var(--ap-muted);font-size:.74rem;flex:1;min-width:0}
 </style>
 
-{{-- HERO --}}
-<div class="so-gd-hero">📖 {{ __('skyops::skyops.guide_title') }}</div>
-<div class="so-gd-sub">{{ __('skyops::skyops.guide_subtitle') }}</div>
+{{-- PAGE HEADER CARD --}}
+<div class="so-card so-page-header">
+    <div class="so-page-title">📖 {{ __('skyops::skyops.guide_title') }}</div>
+    <div class="so-page-subtitle">{{ __('skyops::skyops.guide_subtitle') }}</div>
+</div>
 
 {{-- TABLE OF CONTENTS --}}
 <div class="so-gd-toc">
@@ -123,6 +158,8 @@ html.ap-light .so-gd-live-val{background:rgba(59,130,246,.08)}
     <a href="#admin-health"><span class="so-gd-toc-icon">💊</span> {{ __('skyops::skyops.guide_admin_health') }} <span class="so-gd-toc-tag so-gd-toc-tag-admin">Admin</span></a>
     <a href="#admin-departures"><span class="so-gd-toc-icon">🛫</span> {{ __('skyops::skyops.guide_admin_dep') }} <span class="so-gd-toc-tag so-gd-toc-tag-admin">Admin</span></a>
     <a href="#admin-cache"><span class="so-gd-toc-icon">⚡</span> {{ __('skyops::skyops.guide_admin_cache') }} <span class="so-gd-toc-tag so-gd-toc-tag-admin">Admin</span></a>
+    <a href="#admin-theme"><span class="so-gd-toc-icon">🎨</span> {{ __('skyops::skyops.guide_admin_theme') }} <span class="so-gd-toc-tag so-gd-toc-tag-admin">Admin</span></a>
+    <a href="#admin-units"><span class="so-gd-toc-icon">📐</span> {{ __('skyops::skyops.guide_admin_units') }} <span class="so-gd-toc-tag so-gd-toc-tag-admin">Admin</span></a>
     @endif
 </div>
 
@@ -476,7 +513,9 @@ html.ap-light .so-gd-live-val{background:rgba(59,130,246,.08)}
         <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">landing</span><span class="so-gd-cfg-val">{{ $cfg['landing'] }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_landing') }}</span></div>
         <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">pilot_name_format</span><span class="so-gd-cfg-val">{{ $cfg['pilot_name'] }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_pilot_name') }}</span></div>
         <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">csv_export</span><span class="so-gd-cfg-val">{{ $cfg['csv'] }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_csv') }}</span></div>
-        <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">epoch</span><span class="so-gd-cfg-val">{{ $cfg['epoch'] ?? 'null' }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_epoch') }}</span></div>
+        <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">epoch (config)</span><span class="so-gd-cfg-val">{{ $cfg['epoch'] ?? 'null' }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_epoch') }}</span></div>
+        <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">phpVMS Start Date</span><span class="so-gd-cfg-val">{{ $cfg['phpvms_start'] ?? 'null' }}</span><span class="so-gd-cfg-desc">Admin → Settings → general.start_date</span></div>
+        <div class="so-gd-cfg-row" style="background:rgba(34,197,94,.06);"><span class="so-gd-cfg-key">→ {{ __('skyops::skyops.guide_cfg_effective') }}</span><span class="so-gd-cfg-val" style="color:var(--ap-green);">{{ SkyOpsHelper::fmtDate($cfg['epoch_effective']) }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_source_' . $cfg['epoch_source']) }}</span></div>
     </div>
 </div>
 
@@ -635,6 +674,91 @@ html.ap-light .so-gd-live-val{background:rgba(59,130,246,.08)}
         <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">airline_overview</span><span class="so-gd-cfg-val">{{ $cfg['cache_airlines'] }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.airlines') }}</span></div>
         <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">fleet_stats</span><span class="so-gd-cfg-val">{{ $cfg['cache_fleet'] }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.fleet') }}</span></div>
         <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">filter_options</span><span class="so-gd-cfg-val">{{ $cfg['cache_filters'] }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_filters') }}</span></div>
+    </div>
+</div>
+
+{{-- ── THEME ── --}}
+<div class="so-gd-section" id="admin-theme">
+    <div class="so-gd-h2">🎨 {{ __('skyops::skyops.guide_admin_theme') }}</div>
+    <div class="so-gd-box">
+        <p>{{ __('skyops::skyops.guide_adm_theme_intro') }}</p>
+
+        <p><strong>glass_mode</strong></p>
+        <table class="so-gd-table">
+            <thead><tr><th>{{ __('skyops::skyops.guide_setting') }}</th><th>{{ __('skyops::skyops.guide_description') }}</th></tr></thead>
+            <tbody>
+                <tr><td><span class="so-gd-code">true</span></td><td>{{ __('skyops::skyops.guide_adm_glass_true') }}</td></tr>
+                <tr><td><span class="so-gd-code">false</span></td><td>{{ __('skyops::skyops.guide_adm_glass_false') }}</td></tr>
+            </tbody>
+        </table>
+
+        <div class="so-gd-tip so-gd-note">
+            <strong>{{ __('skyops::skyops.guide_tip') }}:</strong> {{ __('skyops::skyops.guide_adm_theme_tip') }}
+        </div>
+
+        @if(!$cfg['glass_mode'])
+        <p><strong>{{ __('skyops::skyops.guide_adm_solid_colors') }}</strong></p>
+        <p>{{ __('skyops::skyops.guide_adm_solid_desc') }}</p>
+        @endif
+    </div>
+
+    <div class="so-gd-cfg">
+        <div class="so-gd-cfg-header">Theme <span class="so-gd-cfg-live">Live</span></div>
+        <div class="so-gd-cfg-row" style="{{ $cfg['glass_mode'] ? 'background:rgba(34,197,94,.06);' : '' }}">
+            <span class="so-gd-cfg-key">glass_mode</span>
+            <span class="so-gd-cfg-val" style="{{ $cfg['glass_mode'] ? 'color:var(--ap-green);' : '' }}">{{ $cfg['glass_mode'] ? 'true (Glass)' : 'false (Solid)' }}</span>
+            <span class="so-gd-cfg-desc">{{ $cfg['glass_mode'] ? __('skyops::skyops.guide_cfg_glass_on') : __('skyops::skyops.guide_cfg_glass_off') }}</span>
+        </div>
+        @if($cfg['glass_mode'])
+        {{-- Glass Mode: show the fixed glass colors (not configurable) --}}
+        <div class="so-gd-cfg-row">
+            <span class="so-gd-cfg-key">surface (dark)</span>
+            <span class="so-gd-cfg-val"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(255,255,255,0.04);vertical-align:middle;margin-right:6px;border:1px solid var(--ap-border);"></span>rgba(255,255,255,0.04)</span>
+            <span class="so-gd-cfg-desc" style="opacity:.6;">{{ __('skyops::skyops.guide_cfg_glass_fixed') }}</span>
+        </div>
+        <div class="so-gd-cfg-row">
+            <span class="so-gd-cfg-key">surface (light)</span>
+            <span class="so-gd-cfg-val"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(255,255,255,0.75);vertical-align:middle;margin-right:6px;border:1px solid var(--ap-border);"></span>rgba(255,255,255,0.75)</span>
+            <span class="so-gd-cfg-desc" style="opacity:.6;">{{ __('skyops::skyops.guide_cfg_glass_fixed') }}</span>
+        </div>
+        <div class="so-gd-cfg-row">
+            <span class="so-gd-cfg-key">border (dark)</span>
+            <span class="so-gd-cfg-val">rgba(255,255,255,0.08)</span>
+            <span class="so-gd-cfg-desc" style="opacity:.6;">{{ __('skyops::skyops.guide_cfg_glass_fixed') }}</span>
+        </div>
+        <div class="so-gd-cfg-row">
+            <span class="so-gd-cfg-key">border (light)</span>
+            <span class="so-gd-cfg-val">rgba(0,0,0,0.08)</span>
+            <span class="so-gd-cfg-desc" style="opacity:.6;">{{ __('skyops::skyops.guide_cfg_glass_fixed') }}</span>
+        </div>
+        <div class="so-gd-cfg-row">
+            <span class="so-gd-cfg-key">backdrop-filter</span>
+            <span class="so-gd-cfg-val" style="color:var(--ap-cyan);">blur(16px)</span>
+            <span class="so-gd-cfg-desc" style="opacity:.6;">{{ __('skyops::skyops.guide_cfg_glass_fixed') }}</span>
+        </div>
+        @else
+        {{-- Solid Mode: show configurable colors --}}
+        <div class="so-gd-cfg-row">
+            <span class="so-gd-cfg-key">card_bg_dark</span>
+            <span class="so-gd-cfg-val"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:{{ $cfg['solid_bg_dark'] }};vertical-align:middle;margin-right:6px;border:1px solid var(--ap-border);"></span>{{ $cfg['solid_bg_dark'] }}</span>
+            <span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_card_dark') }}</span>
+        </div>
+        <div class="so-gd-cfg-row">
+            <span class="so-gd-cfg-key">card_bg_light</span>
+            <span class="so-gd-cfg-val"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:{{ $cfg['solid_bg_light'] }};vertical-align:middle;margin-right:6px;border:1px solid var(--ap-border);"></span>{{ $cfg['solid_bg_light'] }}</span>
+            <span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_card_light') }}</span>
+        </div>
+        <div class="so-gd-cfg-row">
+            <span class="so-gd-cfg-key">border_dark</span>
+            <span class="so-gd-cfg-val">{{ $cfg['solid_border_dark'] }}</span>
+            <span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_border_dark') }}</span>
+        </div>
+        <div class="so-gd-cfg-row">
+            <span class="so-gd-cfg-key">border_light</span>
+            <span class="so-gd-cfg-val">{{ $cfg['solid_border_light'] }}</span>
+            <span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_border_light') }}</span>
+        </div>
+        @endif
     </div>
 </div>
 

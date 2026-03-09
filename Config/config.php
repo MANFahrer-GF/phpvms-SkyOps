@@ -50,7 +50,9 @@ return [
     |--------------------------------------------------------------------------
     | Epoch Date — Earliest date for statistics
     |--------------------------------------------------------------------------
-    | Set to null to include all data. Override per VA via .env SKYOPS_EPOCH.
+    | If null, uses phpVMS Start Date (Admin > Settings > general.start_date).
+    | If that's also empty, falls back to 2000-01-01.
+    | Override per VA via .env SKYOPS_EPOCH (format: YYYY-MM-DD).
     */
     'epoch' => env('SKYOPS_EPOCH', null),
 
@@ -417,5 +419,43 @@ return [
         'show_landing_rate'     => true,
         'show_fuel'             => true,
         'featured_destinations' => false,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Theme / Appearance
+    |--------------------------------------------------------------------------
+    |
+    | Controls the visual appearance of SkyOps cards and components.
+    |
+    | glass_mode:
+    |   true    Cards are semi-transparent with blur effect (default).
+    |           Looks great on themes with background images or gradients.
+    |           Card colors are not configurable — they adapt to the
+    |           underlying background.
+    |
+    |   false   Cards are solid/opaque. Use this if your theme has a
+    |           plain background or if the glass effect causes readability
+    |           issues. Card colors are fully configurable below.
+    |
+    | solid (only used when glass_mode = false):
+    |   card_bg_dark    Card background color in dark mode (hex).
+    |   card_bg_light   Card background color in light mode (hex).
+    |   border_dark     Card border color in dark mode (hex or rgba).
+    |   border_light    Card border color in light mode (hex or rgba).
+    |
+    */
+    'theme' => [
+        'glass_mode' => true,
+
+        // Solid mode colors (ignored when glass_mode = true)
+        'solid' => [
+            'card_bg_dark'   => '#1e293b',    // Card/nav background (dark)
+            'card_bg_light'  => '#ffffff',    // Card/nav background (light)
+            'inner_bg_dark'  => '#151b2b',    // Inner elements, stat boxes (dark)
+            'inner_bg_light' => '#f8fafc',    // Inner elements, stat boxes (light)
+            'border_dark'    => 'rgba(255,255,255,0.08)',
+            'border_light'   => 'rgba(0,0,0,0.08)',
+        ],
     ],
 ];

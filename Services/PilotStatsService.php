@@ -46,9 +46,15 @@ class PilotStatsService
     public function __construct()
     {
         $epoch = config('skyops.epoch');
-        $this->epoch = $epoch
-            ? Carbon::parse($epoch)->startOfDay()
-            : Carbon::parse('2000-01-01')->startOfDay();
+        if ($epoch) {
+            $this->epoch = Carbon::parse($epoch)->startOfDay();
+        } else {
+            // Fallback to phpVMS start_date setting, then 2000-01-01
+            $startDate = setting('general.start_date');
+            $this->epoch = $startDate
+                ? Carbon::parse($startDate)->startOfDay()
+                : Carbon::parse('2000-01-01')->startOfDay();
+        }
     }
 
     /**
@@ -66,6 +72,9 @@ class PilotStatsService
 
     protected function buildPayload(): array
     {
+        // Translation label for "All Time"
+        $labelAll = __('skyops::skyops.stats_all');
+
         // Detect available columns
         $hasLR     = Schema::hasColumn('pireps', 'landing_rate');
         $hasScore  = Schema::hasColumn('pireps', 'score');
@@ -133,7 +142,7 @@ class PilotStatsService
 
         $rowsAll = (clone $qBase)->select($selectCommon)->groupBy('user_id')
             ->get()
-            ->map(fn($r) => tap($r, fn($x) => $x->period = 'Gesamt'));
+            ->map(fn($r) => tap($r, fn($x) => $x->period = $labelAll));
 
         // Airline data
         $airlines = $hasAirCol ? Airline::query()->get()->keyBy('id') : collect();
@@ -173,7 +182,7 @@ class PilotStatsService
             ])->groupBy('user_id', 'airline_id')->get();
 
             foreach ($tmp as $r) {
-                $mixAll['Gesamt'][$r->user_id][$r->airline_id] = [
+                $mixAll[$labelAll][$r->user_id][$r->airline_id] = [
                     'minutes' => (int) $r->minutes_air,
                     'flights' => (int) $r->flights_air,
                 ];
@@ -320,7 +329,7 @@ class PilotStatsService
             'month'           => $build($rowsMonth,   $periodMonths,   $mixMonth),
             'quarter'         => $build($rowsQuarter, $periodQuarters, $mixQuarter),
             'year'            => $build($rowsYear,    $periodYears,    $mixYear),
-            'all'             => $build($rowsAll,     ['Gesamt'],      $mixAll),
+            'all'             => $build($rowsAll,     [$labelAll],     $mixAll),
             'has'             => $has,
             'epoch'           => $this->epoch->toDateString(),
             'airline_options' => $airlineOptions,

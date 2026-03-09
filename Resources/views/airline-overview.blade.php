@@ -66,15 +66,13 @@ html.ap-light .so-ao-badge-red{color:#991b1b!important;background:rgba(239,68,68
 #soAoVisCount{font-size:.72rem;color:var(--ap-muted);padding:4px 10px;border:1px solid var(--ap-border);border-radius:8px;background:var(--ap-surface);font-variant-numeric:tabular-nums}
 </style>
 
-{{-- PAGE HEADER --}}
-<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-    <div>
-        <div style="font-weight:800;font-size:1.5rem;letter-spacing:-.02em;color:var(--ap-text-head);display:flex;align-items:center;gap:10px;">
-            🏢 {{ __('skyops::skyops.airlines') }}
-        </div>
-        <div style="font-size:.63rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ap-muted);margin-top:4px;">
-            {{ __('skyops::skyops.airlines_subtitle') }}
-        </div>
+{{-- PAGE HEADER CARD --}}
+<div class="so-card so-page-header">
+    <div class="so-page-title">
+        🏢 {{ __('skyops::skyops.airlines') }}
+    </div>
+    <div class="so-page-subtitle">
+        {{ __('skyops::skyops.airlines_subtitle') }}
     </div>
 </div>
 

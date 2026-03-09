@@ -2,8 +2,6 @@
 
 **SkyOps** is a read-only operations center module for [phpVMS 7](https://phpvms.net). It gives virtual airline staff and pilots a unified view of PIREPs, fleet, pilot statistics, airline health, and scheduled departures — all in one place, with zero database migrations.
 
-> Powered by [phpVMS v7](https://www.phpvms.net) & [German Sky Group](https://github.com/MANFahrer-GF)
-
 ---
 
 ## Features
@@ -31,6 +29,7 @@
 - GDPR-aware pilot name display (full, short, callsign, ident)
 - CSV export (admin-only, all users, or disabled)
 - Responsive design with dark/light theme support
+- Glass mode (default) with blur effect — or switch to solid backgrounds
 - Read-only — SkyOps never writes to your database
 
 ---
@@ -67,6 +66,8 @@ modules/SkyOps/Config/config.php
 ```
 
 After changing values, clear the cache: visit `/update` or run `php artisan config:cache`.
+
+> **Want to customize colors and fonts?** See the [Theming Guide](THEMING.md) — step-by-step instructions for matching SkyOps to your VA design.
 
 ### Key settings
 
@@ -142,11 +143,19 @@ SkyOps auto-detects the language from your phpVMS configuration — no manual se
 
 ---
 
+## ☕ Support the Project
+
+If you find SkyOps useful, consider buying me a coffee:
+
+[![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.com/donate/?hosted_button_id=7QEUD3PZLZPV2)
+
+---
+
 ## License
 
 Modified BSD 3-Clause — see [LICENSE](LICENSE) for details.
 
-Copyright © 2025 Thomas Kant / German Sky Group
+Copyright © 2025 Thomas Kant
 
 ---
 

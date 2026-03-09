@@ -1,46 +1,120 @@
 {{-- SkyOps Shared Styles — mirrors Airline Pulse design system --}}
 {{-- CSS Variables: ap-* (shared) · Class prefix: so-* (module-scoped) --}}
+@php
+    $isGlass = config('skyops.theme.glass_mode', true);
+    $solidDark = config('skyops.theme.solid.card_bg_dark', '#1e293b');
+    $solidLight = config('skyops.theme.solid.card_bg_light', '#ffffff');
+    $borderDark = config('skyops.theme.solid.border_dark', 'rgba(255,255,255,0.08)');
+    $borderLight = config('skyops.theme.solid.border_light', 'rgba(0,0,0,0.08)');
+    
+    // Derive inner card colors (slightly darker/lighter than surface)
+    $innerDark = config('skyops.theme.solid.inner_bg_dark', '#151b2b');
+    $innerLight = config('skyops.theme.solid.inner_bg_light', '#f8fafc');
+@endphp
 <style>
-/* ═══ Design System Variables (identical to Airline Pulse) ═══ */
+/* ═══ Design System Variables ═══ */
+/* Customize via Config/config.php → theme section */
+
 :root {
-  --ap-cyan:    #0ea5e9;
-  --ap-blue:    #3b82f6;
-  --ap-violet:  #818cf8;
-  --ap-green:   #22c55e;
-  --ap-amber:   #f59e0b;
-  --ap-red:     #ef4444;
-  --ap-font-head: 'Outfit', sans-serif;
-  --ap-font-mono: 'JetBrains Mono', monospace;
-  --ap-font-body: 'Inter', sans-serif;
-  /* Dark defaults */
+  /* — Accent Colors (buttons, badges, status indicators) — */
+  --ap-cyan:    #0ea5e9;   /* Info, smooth landing rate                    */
+  --ap-blue:    #3b82f6;   /* Active tabs, buttons, pagination — MAIN      */
+  --ap-violet:  #818cf8;   /* Secondary accent, special badges             */
+  --ap-green:   #22c55e;   /* Success, health green, revenue               */
+  --ap-amber:   #f59e0b;   /* Warning, health yellow                       */
+  --ap-red:     #ef4444;   /* Error, health red, expenses, live pulse      */
+  /* — Fonts — */
+  --ap-font-head: 'Outfit', sans-serif;        /* Headlines, nav, buttons  */
+  --ap-font-mono: 'JetBrains Mono', monospace; /* Numbers, times, badges   */
+  --ap-font-body: 'Inter', sans-serif;         /* Body text, descriptions  */
+  /* — Dark Mode Backgrounds (solid — configurable) — */
+  --ap-surface:    {{ $solidDark }};
+  --ap-border:     {{ $borderDark }};
+  --ap-border2:    rgba(255,255,255,0.18);
+  --ap-card-bg:    {{ $innerDark }};
+  --ap-text:       #e2e8f0;   /* Body text                                 */
+  --ap-text-head:  #ffffff;   /* Headlines, big numbers                    */
+  --ap-muted:      #94a3b8;   /* Subdued text, labels                      */
+  --ap-select-bg:  #1e2536;
+  --ap-tag-bg:     #1e2536;
+  --ap-tag-color:  #e2e8f0;   /* Tag text                                  */
+  --ap-divider:    rgba(255,255,255,0.06);
+}
+
+/* ═══ Light Mode (auto-detected from your phpVMS theme) ═══ */
+html.ap-light {
+  --ap-surface:    {{ $solidLight }};
+  --ap-border:     {{ $borderLight }};
+  --ap-border2:    rgba(0,0,0,0.15);
+  --ap-card-bg:    {{ $innerLight }};
+  --ap-text:       #1e293b;   /* Body text — dark                          */
+  --ap-text-head:  #0f172a;   /* Headlines — near black                    */
+  --ap-muted:      #64748b;   /* Subdued text — medium gray                */
+  --ap-select-bg:  #f1f5f9;   /* Input backgrounds                         */
+  --ap-tag-bg:     #f1f5f9;   /* Tag backgrounds                           */
+  --ap-tag-color:  #334155;   /* Tag text                                  */
+  --ap-divider:    rgba(0,0,0,0.06);
+}
+
+/* ═══ Glass Mode (enabled via config or "so-glass" class) ═══ */
+.so-glass {
   --ap-surface:    rgba(255,255,255,0.04);
   --ap-border:     rgba(255,255,255,0.08);
   --ap-border2:    rgba(255,255,255,0.18);
   --ap-card-bg:    rgba(255,255,255,0.03);
-  --ap-text:       #e2e8f0;
-  --ap-text-head:  #ffffff;
-  --ap-muted:      #cbd5e1;
   --ap-select-bg:  rgba(255,255,255,0.07);
   --ap-tag-bg:     rgba(255,255,255,0.07);
-  --ap-tag-color:  #e2e8f0;
   --ap-divider:    rgba(255,255,255,0.07);
 }
-
-/* ═══ Light mode (triggered by theme detection script) ═══ */
-html.ap-light {
-  --ap-surface:    rgba(255,255,255,0.9);
-  --ap-border:     rgba(0,0,0,0.1);
-  --ap-border2:    rgba(0,0,0,0.2);
-  --ap-card-bg:    rgba(255,255,255,0.8);
-  --ap-text:       #1e293b;
-  --ap-text-head:  #0f172a;
-  --ap-muted:      #64748b;
-  --ap-select-bg:  rgba(0,0,0,0.05);
-  --ap-tag-bg:     rgba(0,0,0,0.06);
-  --ap-tag-color:  #334155;
-  --ap-divider:    rgba(0,0,0,0.08);
+html.ap-light .so-glass {
+  --ap-surface:    rgba(255,255,255,0.75);
+  --ap-border:     rgba(0,0,0,0.08);
+  --ap-border2:    rgba(0,0,0,0.15);
+  --ap-card-bg:    rgba(255,255,255,0.6);
+  --ap-select-bg:  rgba(0,0,0,0.04);
+  --ap-tag-bg:     rgba(0,0,0,0.04);
+  --ap-divider:    rgba(0,0,0,0.06);
 }
-html.ap-light .so-card{box-shadow:0 1px 8px rgba(0,0,0,.06)}
+
+/* Glass blur effect — applies to all surface elements */
+.so-glass .so-card,
+.so-glass .so-nav,
+.so-glass .so-stat-box,
+.so-glass .so-filter-card,
+.so-glass .so-surface,
+.so-glass .so-gd-h2,
+.so-glass .so-gd-box,
+.so-glass .so-gd-cfg,
+.so-glass .so-gd-toc a,
+.so-glass .so-db-hero,
+.so-glass .so-db-card,
+.so-glass .so-ps-glass,
+.so-glass .so-ps-kpi,
+.so-glass .so-ao-kpi {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Universal surface class — works in both Glass and Solid */
+.so-surface {
+  background: var(--ap-surface);
+  border: 1px solid var(--ap-border);
+  border-radius: 12px;
+}
+
+/* Light mode shadows for all surface elements */
+html.ap-light .so-card,
+html.ap-light .so-surface,
+html.ap-light .so-db-hero,
+html.ap-light .so-db-card,
+html.ap-light .so-ps-glass,
+html.ap-light .so-ps-kpi,
+html.ap-light .so-ao-kpi,
+html.ap-light .so-gd-h2,
+html.ap-light .so-gd-box,
+html.ap-light .so-gd-cfg {
+  box-shadow: 0 1px 8px rgba(0,0,0,.06);
+}
 html.ap-light .so-nav{box-shadow:0 1px 4px rgba(0,0,0,.04)}
 
 /* ═══ SkyOps Module Components ═══ */
@@ -55,16 +129,30 @@ html.ap-light .so-nav{box-shadow:0 1px 4px rgba(0,0,0,.04)}
 .so-nav-guide:hover,.so-nav-guide.active{opacity:1}
 
 /* Cards */
-.so-card{background:var(--ap-surface);border:1px solid var(--ap-border);border-radius:14px;padding:1.25rem;margin-bottom:1rem;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow:hidden}
+.so-card{background:var(--ap-surface);border:1px solid var(--ap-border);border-radius:14px;padding:1.25rem;margin-bottom:1rem;overflow:hidden}
 .so-card-title{font-family:var(--ap-font-head);font-size:1rem;font-weight:700;margin-bottom:1rem;color:var(--ap-text-head)}
 .so-card-subtitle{font-size:.78rem;color:var(--ap-muted);margin-bottom:.75rem}
+
+/* Page Header Card */
+.so-page-header{margin-bottom:1.25rem}
+.so-page-header-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.so-page-title{font-family:var(--ap-font-head);font-weight:800;font-size:1.5rem;letter-spacing:-.02em;color:var(--ap-text-head);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.so-page-date{font-size:.8rem;font-weight:400;color:var(--ap-muted)}
+.so-page-subtitle{font-size:.72rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ap-muted);margin-top:4px}
+.so-page-stats{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:.82rem;color:var(--ap-muted)}
+.so-page-stats strong{color:var(--ap-text)}
+.so-page-badge{display:inline-flex;align-items:center;font-family:var(--ap-font-mono);font-size:.75rem;font-weight:600;padding:4px 12px;border-radius:8px;background:rgba(59,130,246,.15);color:#60a5fa}
+html.ap-light .so-page-badge{background:rgba(59,130,246,.1);color:#2563eb}
 
 /* Tables */
 .so-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
 .so-table{width:100%;border-collapse:collapse;font-size:.82rem}
 .so-table th{background:var(--ap-surface);color:var(--ap-muted);font-family:var(--ap-font-head);font-weight:600;text-transform:uppercase;font-size:.72rem;letter-spacing:.5px;padding:.6rem .75rem;border-bottom:2px solid var(--ap-border);white-space:nowrap;text-align:left}
 .so-table td{padding:.55rem .75rem;border-bottom:1px solid var(--ap-border);vertical-align:middle;color:var(--ap-text)}
-.so-table tr:hover{background:rgba(59,130,246,.04)}
+.so-table tr:hover{background:#1c2540}
+html.ap-light .so-table tr:hover{background:#f0f4ff}
+.so-glass .so-table tr:hover{background:rgba(59,130,246,.06)}
+html.ap-light .so-glass .so-table tr:hover{background:rgba(59,130,246,.04)}
 .so-table th a{color:var(--ap-muted);text-decoration:none}
 .so-table th a:hover{color:var(--ap-text-head)}
 .so-table th a.so-sort-active{color:var(--ap-blue)}
@@ -125,6 +213,10 @@ html.ap-light .so-phase-rejected{color:#991b1b;background:rgba(239,68,68,.1);bor
 .so-select option{background:#1e293b;color:var(--ap-text)}
 html.ap-light .so-input,html.ap-light .so-select{background:#ffffff}
 html.ap-light .so-select option{background:#ffffff;color:#1e293b}
+.so-glass .so-input,.so-glass .so-select{background:rgba(255,255,255,0.06)}
+.so-glass .so-select option{background:#1e293b}
+html.ap-light .so-glass .so-input,html.ap-light .so-glass .so-select{background:rgba(255,255,255,0.5)}
+html.ap-light .so-glass .so-select option{background:#ffffff}
 
 /* Buttons */
 .so-btn{display:inline-flex;align-items:center;gap:.35rem;padding:.4rem 1rem;border-radius:6px;font-family:var(--ap-font-head);font-size:.82rem;font-weight:500;border:none;cursor:pointer;transition:all .15s;text-decoration:none}
@@ -178,8 +270,12 @@ html.ap-light .so-live-badge{color:#991b1b;background:rgba(239,68,68,.08);border
 .so-tab.active{background:var(--ap-blue);color:#fff;border-color:var(--ap-blue)}
 
 /* Live Row + Empty + Count */
-.so-row-live{background:rgba(239,68,68,.04)!important}
-.so-row-live:hover{background:rgba(239,68,68,.08)!important}
+.so-row-live{background:#1f1520!important}
+.so-row-live:hover{background:#2a1a2a!important}
+html.ap-light .so-row-live{background:#fef2f2!important}
+html.ap-light .so-row-live:hover{background:#fee2e2!important}
+.so-glass .so-row-live{background:rgba(239,68,68,.06)!important}
+.so-glass .so-row-live:hover{background:rgba(239,68,68,.1)!important}
 .so-empty{text-align:center;padding:2rem;color:var(--ap-muted);font-size:.9rem}
 .so-count{display:inline-flex;align-items:center;gap:.3rem;padding:.15rem .5rem;border-radius:10px;font-family:var(--ap-font-mono);font-size:.72rem;font-weight:600;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:#93c5fd}
 html.ap-light .so-count{color:#1d4ed8;background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.2)}

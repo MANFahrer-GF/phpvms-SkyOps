@@ -135,29 +135,31 @@ html.ap-light #soAirPortalList{background:#f8fafc}
 {{-- Airline Portal --}}
 <div id="soAirPortal" style="display:none;position:fixed;z-index:99999;padding:.5rem;min-width:320px;">
     <div class="d-flex gap-2 mb-2">
-        <button class="so-ps-btn" data-action="all" style="font-size:.72rem;padding:4px 9px;">Alle</button>
+        <button class="so-ps-btn" data-action="all" style="font-size:.72rem;padding:4px 9px;">{{ __('skyops::skyops.filter_all') }}</button>
         <button class="so-ps-btn" data-action="top10" style="font-size:.72rem;padding:4px 9px;">Top 10</button>
-        <button class="so-ps-btn" data-action="none" style="font-size:.72rem;padding:4px 9px;">Keine</button>
+        <button class="so-ps-btn" data-action="none" style="font-size:.72rem;padding:4px 9px;">{{ __('skyops::skyops.filter_none') }}</button>
     </div>
     <input type="text" class="so-input w-100 mb-2" id="soAirSearch" placeholder="{{ __('skyops::skyops.search') }}…" style="font-size:.8rem;padding:5px 10px;">
     <div id="soAirPortalList" style="max-height:260px;overflow:auto;padding:.25rem;"></div>
 </div>
 
-{{-- PAGE HEADER --}}
-<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-    <div>
-        <div style="font-weight:800;font-size:1.6rem;letter-spacing:-.02em;color:var(--ap-text-head);display:flex;align-items:center;gap:10px;">
-            📊 {{ __('skyops::skyops.pilot_stats') }}
+{{-- PAGE HEADER CARD --}}
+<div class="so-card so-page-header">
+    <div class="so-page-header-row">
+        <div>
+            <div class="so-page-title">
+                📊 {{ __('skyops::skyops.pilot_stats') }}
+            </div>
+            <div class="so-page-subtitle">
+                {{ __('skyops::skyops.stats_since', ['date' => \Modules\SkyOps\Helpers\SkyOpsHelper::fmtDate($pilotStats['epoch'])]) }}
+            </div>
         </div>
-        <div style="font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ap-muted);margin-top:4px;">
-            {{ __('skyops::skyops.stats_since', ['date' => \Modules\SkyOps\Helpers\SkyOpsHelper::fmtDate($pilotStats['epoch'])]) }}
+        <div class="so-ps-filter-pill" id="statsTabs">
+            <button class="active" data-scope="month">📅 {{ __('skyops::skyops.stats_month') }}</button>
+            <button data-scope="quarter">📆 {{ __('skyops::skyops.stats_quarter') }}</button>
+            <button data-scope="year">📋 {{ __('skyops::skyops.stats_year') }}</button>
+            <button data-scope="all">♾️ {{ __('skyops::skyops.stats_all') }}</button>
         </div>
-    </div>
-    <div class="so-ps-filter-pill" id="statsTabs">
-        <button class="active" data-scope="month">📅 {{ __('skyops::skyops.stats_month') }}</button>
-        <button data-scope="quarter">📆 {{ __('skyops::skyops.stats_quarter') }}</button>
-        <button data-scope="year">📋 {{ __('skyops::skyops.stats_year') }}</button>
-        <button data-scope="all">♾️ {{ __('skyops::skyops.stats_all') }}</button>
     </div>
 </div>
 

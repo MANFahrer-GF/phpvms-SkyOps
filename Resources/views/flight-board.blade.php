@@ -123,19 +123,17 @@ html.ap-light .so-fb-chev{color:rgba(0,0,0,.5)}
 }
 </style>
 
-{{-- PAGE HEADER --}}
-<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-    <div>
-        <div style="font-weight:800;font-size:1.5rem;letter-spacing:-.02em;color:var(--ap-text-head);display:flex;align-items:center;gap:10px;">
-            🛫 {{ __('skyops::skyops.departures') }}
-            <span class="so-fb-tag so-fb-tag-blue" style="font-size:.75rem;padding:3px 10px;">{{ $flights->count() }} {{ __('skyops::skyops.col_flights') }}</span>
-        </div>
-        @if($showDptTime || $showArrTime)
-        <div style="font-size:.63rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ap-muted);margin-top:4px;">
-            {{ __('skyops::skyops.dep_utc_time', ['time' => \Carbon\Carbon::now('UTC')->format('H:i')]) }}
-        </div>
-        @endif
+{{-- PAGE HEADER CARD --}}
+<div class="so-card so-page-header">
+    <div class="so-page-title">
+        🛫 {{ __('skyops::skyops.departures') }}
+        <span class="so-page-badge">{{ $flights->count() }} {{ __('skyops::skyops.col_flights') }}</span>
     </div>
+    @if($showDptTime || $showArrTime)
+    <div class="so-page-subtitle">
+        {{ __('skyops::skyops.dep_utc_time', ['time' => \Carbon\Carbon::now('UTC')->format('H:i')]) }}
+    </div>
+    @endif
 </div>
 
 {{-- FILTER --}}
@@ -374,8 +372,8 @@ html.ap-light .so-fb-chev{color:rgba(0,0,0,.5)}
             @if($aln)
                 <div>
                     <div class="so-fb-dg-label">{{ __('skyops::skyops.col_aircraft') }}</div>
-                    @if(isset($aln->aircraft_types) && $aln->aircraft_types->isNotEmpty())
-                        <div class="so-fb-dg-val">{{ $aln->aircraft_types->implode(' · ') }}</div>
+                    @if(isset($f->aircraft_types) && $f->aircraft_types->isNotEmpty())
+                        <div class="so-fb-dg-val">{{ $f->aircraft_types->implode(' · ') }}</div>
                     @else
                         <div class="so-fb-dg-val" style="color:var(--ap-muted);">{{ __('skyops::skyops.dep_no_types') }}</div>
                     @endif

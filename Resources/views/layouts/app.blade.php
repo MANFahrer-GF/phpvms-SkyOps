@@ -33,7 +33,7 @@
 
 @include('skyops::partials._styles')
 
-<div class="so-wrap">
+<div class="so-wrap{{ config('skyops.theme.glass_mode', true) ? ' so-glass' : '' }}">
     {{-- Navigation Tabs --}}
     <nav class="so-nav">
         @if(config('skyops.landing') === 'dashboard')

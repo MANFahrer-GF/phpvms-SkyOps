@@ -132,8 +132,14 @@ class FlightBoardService
         $acByKey = [];
 
         if ($typeSource === 'flight_icao') {
-            // SIMPLE: One JOIN query across flights → pivot → aircraft.
-            // Groups by airline_id + flight_number so dedup ID mismatch doesn't matter.
+            // PIVOT-FIRST approach (matches phpVMS FlightController + DH Basic pattern):
+            // Step 1: pivot → subfleet → aircraft ICAO (what types exist per subfleet?)
+            // Step 2: pivot → flights → airline_id + flight_number (which flight number has this subfleet?)
+            // Step 3: combine by airline_id|flight_number → [icao, ...]
+            //
+            // NO filter on flights.active/visible/deleted — the pivot table is the source of truth.
+            // phpVMS and DH both query flight_subfleet without any flights-table filter.
+
             $pivotTable = null;
             $pivotFlightKey = 'flight_id';
             $pivotSubfleetKey = 'subfleet_id';
@@ -162,30 +168,71 @@ class FlightBoardService
                 $ft = $flightModel->getTable();
                 $ac = (new Aircraft)->getTable();
 
-                // ONE query: flights JOIN pivot JOIN aircraft → grouped by airline+flightnr
-                $q = DB::table($ft)
-                    ->join($pivotTable, "{$ft}.id", '=', "{$pivotTable}.{$pivotFlightKey}")
-                    ->join($ac, "{$ac}.subfleet_id", '=', "{$pivotTable}.{$pivotSubfleetKey}")
-                    ->where("{$ft}.active", 1)
-                    ->whereNull("{$ft}.deleted_at")
+                // Step 1: Which subfleet_ids have which aircraft ICAO codes?
+                $sfIcaoQuery = DB::table($ac)
                     ->whereNull("{$ac}.deleted_at")
                     ->whereNotNull("{$ac}.icao")
                     ->where("{$ac}.icao", '!=', '');
                 if ($activeOnly) {
-                    $q->where("{$ac}.status", 'A');
+                    $sfIcaoQuery->where("{$ac}.status", 'A');
                 }
-                $rows = $q->select("{$ft}.airline_id", "{$ft}.flight_number", "{$ac}.icao")
+                $sfIcaoRows = $sfIcaoQuery
+                    ->select("{$ac}.subfleet_id", "{$ac}.icao")
                     ->distinct()->get();
 
-                foreach ($rows as $r) {
-                    $key = $r->airline_id . '|' . $r->flight_number;
-                    $acByKey[$key][] = $r->icao;
-                    $keysWithSf[$key] = true;
+                // Build map: subfleet_id → [icao, ...]
+                $icaoBySubfleet = [];
+                foreach ($sfIcaoRows as $r) {
+                    $icaoBySubfleet[$r->subfleet_id][] = $r->icao;
                 }
-                foreach ($acByKey as &$types) {
-                    $types = collect($types)->unique()->sort()->values();
+
+                if (!empty($icaoBySubfleet)) {
+                    // Step 2: Which flight_ids are linked to which subfleet_ids?
+                    $pivotRows = DB::table($pivotTable)
+                        ->whereIn($pivotSubfleetKey, array_keys($icaoBySubfleet))
+                        ->select($pivotFlightKey, $pivotSubfleetKey)
+                        ->distinct()->get();
+
+                    // Build map: flight_id → [subfleet_id, ...]
+                    $sfByFlightId = [];
+                    $allFlightIds = [];
+                    foreach ($pivotRows as $r) {
+                        $fid = (string) $r->{$pivotFlightKey};
+                        $sfByFlightId[$fid][] = $r->{$pivotSubfleetKey};
+                        $allFlightIds[$fid] = true;
+                    }
+
+                    if (!empty($allFlightIds)) {
+                        // Step 3: Look up airline_id + flight_number for these flight_ids
+                        // NO WHERE active/visible/deleted — just the lookup
+                        $flightRows = DB::table($ft)
+                            ->whereIn('id', array_keys($allFlightIds))
+                            ->select('id', 'airline_id', 'flight_number')
+                            ->get();
+
+                        // Step 4: Combine → airline_id|flight_number → [icao codes]
+                        foreach ($flightRows as $fr) {
+                            $key = $fr->airline_id . '|' . $fr->flight_number;
+                            $fid = (string) $fr->id;
+                            if (isset($sfByFlightId[$fid])) {
+                                foreach ($sfByFlightId[$fid] as $sfId) {
+                                    if (isset($icaoBySubfleet[$sfId])) {
+                                        foreach ($icaoBySubfleet[$sfId] as $icao) {
+                                            $acByKey[$key][] = $icao;
+                                        }
+                                    }
+                                }
+                                $keysWithSf[$key] = true;
+                            }
+                        }
+
+                        foreach ($acByKey as &$types) {
+                            $types = collect($types)->unique()->sort()->values();
+                        }
+                        unset($types);
+                    }
                 }
-                unset($types);
+
                 $_debugAssigned = count($keysWithSf);
             }
 
@@ -219,9 +266,9 @@ class FlightBoardService
                 if ($flight->airline) {
                     $key = $flight->airline_id . '|' . $flight->flight_number;
                     if (isset($keysWithSf[$key])) {
-                        $flight->airline->aircraft_types = collect($acByKey[$key] ?? []);
+                        $flight->aircraft_types = collect($acByKey[$key] ?? []);
                     } else {
-                        $flight->airline->aircraft_types = collect($acByAirline[$flight->airline_id] ?? []);
+                        $flight->aircraft_types = collect($acByAirline[$flight->airline_id] ?? []);
                     }
                 }
                 return $flight;
@@ -257,7 +304,7 @@ class FlightBoardService
             }
             $flights->getCollection()->transform(function ($flight) use ($acTypes) {
                 if ($flight->airline) {
-                    $flight->airline->aircraft_types = collect($acTypes[$flight->airline_id] ?? []);
+                    $flight->aircraft_types = collect($acTypes[$flight->airline_id] ?? []);
                 }
                 return $flight;
             });
@@ -270,7 +317,7 @@ class FlightBoardService
             $flights->getCollection()->transform(function ($flight) use ($typeSource, $segment) {
                 if (!$flight->airline || !$flight->airline->subfleets) {
                     if ($flight->airline) {
-                        $flight->airline->aircraft_types = collect();
+                        $flight->aircraft_types = collect();
                     }
                     return $flight;
                 }
@@ -278,7 +325,7 @@ class FlightBoardService
                 if ($segment !== null) {
                     $types = $types->map(fn($t) => explode('-', $t)[$segment] ?? null)->filter();
                 }
-                $flight->airline->aircraft_types = $types->unique()->sort()->values();
+                $flight->aircraft_types = $types->unique()->sort()->values();
                 return $flight;
             });
         }

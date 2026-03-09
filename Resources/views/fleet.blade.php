@@ -109,23 +109,19 @@ html.ap-light .so-ft-icao-tip{color:#0369a1}
 .so-ft-mono{font-variant-numeric:tabular-nums lining-nums;font-size:.8rem}
 </style>
 
-{{-- PAGE HEADER --}}
-<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
-    <div>
-        <div style="font-weight:800;font-size:1.6rem;letter-spacing:-.02em;color:var(--ap-text-head);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
-            ✈️ {{ __('skyops::skyops.fleet') }}
-        </div>
-        <div class="d-flex align-items-center gap-2 mt-2">
-            <span style="font-size:.8rem;color:var(--ap-muted);">
-                <strong style="color:var(--ap-text);">{{ $aircraft->count() }}</strong> {{ __('skyops::skyops.col_aircraft') }}
-            </span>
-            @if($activeFilters > 0)
-                <a href="{{ url()->current() }}" class="so-btn so-btn-ghost so-btn-sm" style="color:var(--ap-red);border-color:rgba(248,81,73,.3);">
-                    ✕ Filter zurücksetzen
-                    @if($activeFilters > 1)({{ $activeFilters }})@endif
-                </a>
-            @endif
-        </div>
+{{-- PAGE HEADER CARD --}}
+<div class="so-card so-page-header">
+    <div class="so-page-title">
+        ✈️ {{ __('skyops::skyops.fleet') }}
+    </div>
+    <div class="so-page-stats">
+        <span><strong>{{ $aircraft->count() }}</strong> {{ __('skyops::skyops.col_aircraft') }}</span>
+        @if($activeFilters > 0)
+            <a href="{{ url()->current() }}" class="so-btn so-btn-ghost so-btn-sm" style="color:var(--ap-red);border-color:rgba(248,81,73,.3);">
+                ✕ Filter zurücksetzen
+                @if($activeFilters > 1)({{ $activeFilters }})@endif
+            </a>
+        @endif
     </div>
 </div>
 

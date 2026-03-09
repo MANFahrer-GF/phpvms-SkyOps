@@ -52,23 +52,19 @@
 
 @section('skyops-content')
 
-{{-- PAGE HEADER --}}
-<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
-    <div>
-        <div style="font-weight:800;font-size:1.6rem;letter-spacing:-.02em;color:var(--ap-text-head);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;">
-            ✈️ {{ __('skyops::skyops.pirep_list') }}
-            <span style="font-size:.8rem;color:var(--ap-muted);font-weight:400;">{{ $displayFrom }} – {{ $displayTo }}</span>
-        </div>
-        <div class="d-flex align-items-center gap-2 mt-2">
-            <span style="font-size:.8rem;color:var(--ap-muted);">
-                <strong style="color:var(--ap-text);">{{ $completedFlights->total() }}</strong> {{ __('skyops::skyops.col_flights') }}
+{{-- PAGE HEADER CARD --}}
+<div class="so-card so-page-header">
+    <div class="so-page-title">
+        ✈️ {{ __('skyops::skyops.pirep_list') }}
+        <span class="so-page-date">{{ $displayFrom }} – {{ $displayTo }}</span>
+    </div>
+    <div class="so-page-stats">
+        <span><strong>{{ $completedFlights->total() }}</strong> {{ __('skyops::skyops.col_flights') }}</span>
+        @if($activeFlights->count() > 0)
+            <span class="so-live-badge">
+                <span class="so-live-dot"></span> {{ $activeFlights->count() }} LIVE
             </span>
-            @if($activeFlights->count() > 0)
-                <span class="so-live-badge">
-                    <span class="so-live-dot"></span> {{ $activeFlights->count() }} LIVE
-                </span>
-            @endif
-        </div>
+        @endif
     </div>
 </div>
 
