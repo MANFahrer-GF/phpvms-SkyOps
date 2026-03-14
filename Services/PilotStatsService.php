@@ -198,9 +198,9 @@ class PilotStatsService
             ->merge($rowsYear->pluck('user_id'))
             ->merge($rowsAll->pluck('user_id'))
             ->unique()->values();
-        $users = User::whereIn('id', $userIds)->get(['id', 'name', 'callsign'])->keyBy('id');
+        $users = User::with('airline')->whereIn('id', $userIds)->get(['id', 'name', 'callsign', 'pilot_id', 'airline_id'])->keyBy('id');
         $names = $users->mapWithKeys(fn($u) => [
-            $u->id => PilotNameHelper::format($u->name, $u->callsign),
+            $u->id => PilotNameHelper::formatUser($u),
         ]);
 
         // Airline info helper

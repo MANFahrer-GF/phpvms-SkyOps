@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.2] — 2026-03-14
+
+### Fixed
+- **Pilot Name Display**: `callsign` and `id` modes now correctly use phpVMS's computed `ident` attribute (airline ICAO + pilot_id, e.g. "GSG001") instead of the raw `callsign` database field
+- **Short Name Format**: Now displays only first name + last initial (e.g. "Thomas K." instead of "Thomas Michael K.")
+
+### Changed
+- **PilotNameHelper**: New `formatUser($user)` method for proper ident handling
+- **Eager Loading**: User's airline relation now loaded for correct ident calculation
+
+### Thanks
+- **Disposable Hero** for identifying the callsign/ident issue
+
+---
+
 ## [1.0.1] — 2026-03-09
 
 ### Added

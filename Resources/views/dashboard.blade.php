@@ -304,7 +304,7 @@ html.ap-light .so-db-card:hover{border-color:rgba(59,130,246,.35);box-shadow:0 8
                                 @endif
                                 <td>
                                     <span class="so-db-act-pilot">
-                                        {{ PilotNameHelper::format($p->user->name ?? null, $p->user->callsign ?? null) }}
+                                        {{ PilotNameHelper::formatUser($p->user) }}
                                     </span>
                                 </td>
                             </tr>

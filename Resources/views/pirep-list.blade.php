@@ -156,7 +156,7 @@
                     <td><a href="{{ $pirepUrl($r->id) }}" style="color:var(--ap-text);text-decoration:none;font-weight:600;font-size:.78rem;">{{ SkyOpsHelper::flightNumber($r) }}</a></td>
                     <td><span class="so-badge so-badge-warning" style="font-size:.72rem;">{{ $r->dpt_airport->icao ?? '—' }}</span></td>
                     <td><span class="so-badge so-badge-warning" style="font-size:.72rem;">{{ $r->arr_airport->icao ?? '—' }}</span></td>
-                    <td><a href="{{ $pilotUrl($r->user_id) }}" style="color:var(--ap-text);text-decoration:none;font-weight:600;">{{ PilotNameHelper::format($r->user->name ?? null, $r->user->callsign ?? null) }}</a></td>
+                    <td><a href="{{ $pilotUrl($r->user_id) }}" style="color:var(--ap-text);text-decoration:none;font-weight:600;">{{ PilotNameHelper::formatUser($r->user) }}</a></td>
                     <td>
                         <a href="{{ $airlineUrl($r->airline->icao ?? '') }}" style="color:var(--ap-text);text-decoration:none;font-weight:600;" title="{{ $r->airline->name ?? '' }}">
                             {{ $r->airline->icao ?? '—' }}
@@ -226,7 +226,7 @@
                     <td><a href="{{ $pirepUrl($r->id) }}" style="color:var(--ap-text);text-decoration:none;font-weight:600;font-size:.78rem;letter-spacing:.03em;">{{ SkyOpsHelper::flightNumber($r) }}</a></td>
                     <td><span class="so-badge so-badge-warning" style="font-size:.72rem;" title="{{ $r->dpt_airport->name ?? '' }}">{{ $r->dpt_airport->icao ?? '—' }}</span></td>
                     <td><span class="so-badge so-badge-warning" style="font-size:.72rem;" title="{{ $r->arr_airport->name ?? '' }}">{{ $r->arr_airport->icao ?? '—' }}</span></td>
-                    <td><a href="{{ $pilotUrl($r->user_id) }}" style="color:var(--ap-text);text-decoration:none;font-weight:600;" title="{{ $r->user->callsign ?? '' }}">{{ PilotNameHelper::format($r->user->name ?? null, $r->user->callsign ?? null) }}</a></td>
+                    <td><a href="{{ $pilotUrl($r->user_id) }}" style="color:var(--ap-text);text-decoration:none;font-weight:600;" title="{{ $r->user->ident ?? '' }}">{{ PilotNameHelper::formatUser($r->user) }}</a></td>
                     <td>
                         <a href="{{ $airlineUrl($r->airline->icao ?? '') }}" style="color:var(--ap-text);text-decoration:none;font-weight:600;" title="{{ $r->airline->name ?? '' }}">
                             {{ $r->airline->icao ?? '—' }}

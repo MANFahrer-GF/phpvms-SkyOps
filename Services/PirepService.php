@@ -20,7 +20,7 @@ class PirepService
     protected array $eagerLoad = [
         'airline',
         'aircraft.subfleet',
-        'user',
+        'user.airline',  // Include user's airline for ident calculation
         'dpt_airport',
         'arr_airport',
         'field_values',

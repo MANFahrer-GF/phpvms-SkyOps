@@ -70,7 +70,7 @@ class DashboardService
         $flightsTotal = Flight::where('active', true)->count();
 
         // ── Latest 10 accepted PIREPs (activity feed) ──
-        $latestPireps = Pirep::with(['user', 'airline', 'dpt_airport', 'arr_airport', 'aircraft'])
+        $latestPireps = Pirep::with(['user.airline', 'airline', 'dpt_airport', 'arr_airport', 'aircraft'])
             ->where('state', PirepState::ACCEPTED)
             ->orderByDesc('created_at')
             ->limit(10)
@@ -95,13 +95,13 @@ class DashboardService
 
         // Hydrate with user data
         $userIds = $topPilotsRaw->pluck('user_id')->toArray();
-        $users = User::whereIn('id', $userIds)->get()->keyBy('id');
+        $users = User::with('airline')->whereIn('id', $userIds)->get()->keyBy('id');
 
         $topPilots = $topPilotsRaw->map(function ($row) use ($users, $hasDist) {
             $user = $users->get($row->user_id);
             $mins = (int) ($row->total_mins ?? 0);
             return [
-                'name'    => PilotNameHelper::format($user->name ?? null, $user->callsign ?? null),
+                'name'    => PilotNameHelper::formatUser($user),
                 'user_id' => $row->user_id,
                 'flights' => (int) $row->flights,
                 'hours'   => sprintf('%d:%02d', intdiv($mins, 60), $mins % 60),

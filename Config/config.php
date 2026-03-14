@@ -78,9 +78,12 @@ return [
     | Options: 'full', 'short' (default), 'callsign', 'id'
     |
     |   full     → Thomas Kant
-    |   short    → Thomas K.         (GDPR friendly)
-    |   callsign → GSG001            (callsign only)
-    |   id       → GSG001 (Thomas K.)
+    |   short    → Thomas K.             (GDPR friendly)
+    |   callsign → GSG001                (ident = airline ICAO + pilot_id)
+    |   id       → GSG001 (Thomas K.)    (ident + short name)
+    |
+    | Note: 'callsign' and 'id' use phpVMS's computed 'ident' attribute
+    | (airline ICAO + pilot_id), NOT the raw 'callsign' database field.
     */
     'pilot_name_format' => env('SKYOPS_PILOT_NAME', 'short'),
 
