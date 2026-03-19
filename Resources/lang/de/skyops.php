@@ -8,6 +8,7 @@ return [
     'fleet'         => 'Flotte',
     'pilot_stats'   => 'Pilot-Statistik',
     'airlines'      => 'Airlines',
+    'finance'       => 'Finance Hub',
     'departures'    => 'Abflugtafel',
 
     // Actions

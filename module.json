@@ -3,7 +3,7 @@
     "alias": "skyops",
     "description": "Sky Operations Center — PIREPs, Fleet, Pilot Statistics, Airlines, Departures",
     "keywords": ["phpvms", "pireps", "fleet", "pilots", "airlines", "flights"],
-    "version": "1.0.2",
+    "version": "1.0.3",
     "active": 1,
     "order": 100,
     "providers": [

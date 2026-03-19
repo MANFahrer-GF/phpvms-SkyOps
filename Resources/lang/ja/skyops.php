@@ -6,6 +6,7 @@ return [
     'fleet' => 'フリート',
     'pilot_stats' => 'パイロット統計',
     'airlines' => '航空会社',
+    'finance'       => 'Finance Hub',
     'departures' => '出発',
     'apply' => '適用',
     'reset' => 'リセット',

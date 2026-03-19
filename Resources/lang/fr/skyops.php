@@ -10,6 +10,7 @@ return [
     'fleet'       => 'Flotte',
     'pilot_stats' => 'Statistiques Pilotes',
     'airlines'    => 'Compagnies',
+    'finance'       => 'Finance Hub',
     'departures'  => 'Départs',
     'dashboard'   => 'Tableau de bord',
     'all'         => 'Tous',

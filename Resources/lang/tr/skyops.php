@@ -6,6 +6,7 @@ return [
     'fleet' => 'Filo',
     'pilot_stats' => 'Pilot İstatistikleri',
     'airlines' => 'Havayolları',
+    'finance'       => 'Finance Hub',
     'departures' => 'Kalkışlar',
     'apply' => 'Uygula',
     'reset' => 'Sıfırla',

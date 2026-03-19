@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.3] — 2026-03-19
+
+### Added
+- **Finance Hub Link**: New navigation tab linking to the DynamicFares finance page (`/dynamicfares/finance`)
+- **Config Toggle**: `features.show_finance_link` — disabled by default, enable it when [DynamicFares](https://github.com/MANFahrer-GF/phpvms-dynamicfares) is installed
+
+### Translations
+- New key: `finance` ("Finance Hub") — added to all 9 languages
+
+### Note
+- Requires the [DynamicFares](https://github.com/MANFahrer-GF/phpvms-dynamicfares) module for the Finance Hub page to work
+
+---
+
 ## [1.0.2] — 2026-03-14
 
 ### Fixed

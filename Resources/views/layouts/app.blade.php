@@ -53,6 +53,11 @@
         <a href="{{ route('skyops.airlines') }}" class="{{ ($currentPage ?? '') === 'airlines' ? 'active' : '' }}">
             {{ __('skyops::skyops.airlines') }}
         </a>
+        @if(config('skyops.features.show_finance_link', false))
+        <a href="/dynamicfares/finance" class="">
+            {{ __('skyops::skyops.finance') }}
+        </a>
+        @endif
         <a href="{{ route('skyops.departures') }}" class="{{ ($currentPage ?? '') === 'departures' ? 'active' : '' }}">
             {{ __('skyops::skyops.departures') }}
         </a>

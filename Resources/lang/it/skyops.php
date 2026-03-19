@@ -6,6 +6,7 @@ return [
     'fleet' => 'Flotta',
     'pilot_stats' => 'Statistiche Piloti',
     'airlines' => 'Compagnie',
+    'finance'       => 'Finance Hub',
     'departures' => 'Partenze',
     'apply' => 'Applica',
     'reset' => 'Ripristina',
