@@ -98,7 +98,7 @@ class SkyOpsController extends Controller
             'page'     => 'nullable|integer|min:1',
         ]);
         return view('skyops::flight-board', array_merge(
-            $this->flightBoardService->getFlightBoard($v),
+            $this->flightBoardService->getFlightBoard($v, $request->user()),
             ['filters' => $v, 'currentPage' => 'departures']
         ));
     }

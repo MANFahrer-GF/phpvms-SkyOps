@@ -4,12 +4,42 @@
 
 @php
     use Modules\SkyOps\Services\FlightBoardService;
-    $typeMap   = ['P'=>'PAX','J'=>'PAX','C'=>'CARGO','H'=>'CHARTER','T'=>'TRAIN','X'=>'POS','V'=>'VIP'];
-    $typeColor = ['P'=>'blue','J'=>'blue','C'=>'amber','H'=>'cyan','T'=>'green','X'=>'','V'=>'violet'];
+    $typeMap   = [
+        'J' => 'PAX', 'C' => 'PAX', 'G' => 'PAX', 'E' => 'VIP', 'I' => 'AMB',
+        'F' => 'CARGO', 'A' => 'CARGO', 'H' => 'CARGO', 'M' => 'MAIL', 'Q' => 'CARGO', 'R' => 'CARGO', 'L' => 'CARGO',
+        'S' => 'SHUTTLE', 'B' => 'SHUTTLE',
+        'K' => 'TRAIN', 'P' => 'POS', 'T' => 'TEST', 'X' => 'TECH',
+    ];
+    $typeColor = [
+        'J' => 'blue', 'C' => 'blue', 'G' => 'blue', 'E' => 'violet', 'I' => 'cyan',
+        'F' => 'amber', 'A' => 'amber', 'H' => 'amber', 'M' => 'amber', 'Q' => 'amber', 'R' => 'amber', 'L' => 'amber',
+        'S' => 'green', 'B' => 'green',
+        'K' => 'green', 'P' => 'cyan', 'T' => 'cyan', 'X' => 'cyan',
+    ];
 @endphp
 
 @section('skyops-content')
 <!-- SkyOps Debug: type_source={{ $_debug_type_source ?? 'n/a' }} | pivot={{ $_debug_pivot_table ?? 'n/a' }} | combos={{ $_debug_assigned ?? 0 }} | sample={{ $_debug_sample ?? 'n/a' }} -->
+
+@php
+    $curAirline = strtoupper(trim((string) request('airline', '')));
+    $curDep     = strtoupper(trim((string) request('dep', '')));
+    $curArr     = strtoupper(trim((string) request('arr', '')));
+
+    $hasMin = $activeMin !== null && $activeMin !== '' && (float) $activeMin > 0;
+    $hasMax = $activeMax !== null && $activeMax !== '';
+
+    $activeFilterLabels = [];
+    if ($curAirline !== '') $activeFilterLabels[] = 'Airline: ' . $curAirline;
+    if ($curDep !== '')     $activeFilterLabels[] = __('skyops::skyops.dep_departure') . ': ' . $curDep;
+    if ($curArr !== '')     $activeFilterLabels[] = __('skyops::skyops.dep_arrival') . ': ' . $curArr;
+    if ($fltType !== '')    $activeFilterLabels[] = __('skyops::skyops.dep_flight_type') . ': ' . $fltType;
+    if ($hasMin && $hasMax) $activeFilterLabels[] = __('skyops::skyops.dep_flight_time') . ': ' . $activeMin . 'h–' . $activeMax . 'h';
+    elseif ($hasMin)        $activeFilterLabels[] = __('skyops::skyops.dep_flight_time') . ': ≥' . $activeMin . 'h';
+    elseif ($hasMax)        $activeFilterLabels[] = __('skyops::skyops.dep_flight_time') . ': ≤' . $activeMax . 'h';
+
+    $hasActiveFilters = !empty($activeFilterLabels);
+@endphp
 
 <style>
 /* ── Flight Board — so-fb-* prefix, ap-* theme vars ── */
@@ -111,6 +141,10 @@ html.ap-light .so-fb-chev{color:rgba(0,0,0,.5)}
 
 /* Chip active state */
 .so-fb-chip-on{background:var(--ap-blue)!important;border-color:var(--ap-blue)!important;color:#fff!important}
+.so-fb-type-chip.so-fb-chip-on{background:var(--ap-blue)!important;border-color:var(--ap-blue)!important;color:#fff!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}
+html.ap-light .so-fb-type-chip.so-fb-chip-on{background:var(--ap-blue)!important;border-color:var(--ap-blue)!important;color:#fff!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
+.so-fb-input-on{border-color:var(--ap-blue)!important;box-shadow:0 0 0 2px rgba(59,130,246,.18)}
+.so-fb-type-stack{display:flex;flex-direction:column;gap:4px;align-items:center}
 
 @media(max-width:800px){
     .so-fb-thead{display:none}
@@ -140,12 +174,34 @@ html.ap-light .so-fb-chev{color:rgba(0,0,0,.5)}
 <div class="so-card mb-3">
     <form method="GET" id="soFbForm">
         @csrf
+
+        @if($respectPhpvmsSettings)
+        <div class="d-flex gap-1 flex-wrap align-items-center mb-2">
+            <span class="so-fb-tag so-fb-tag-green">phpVMS Sync</span>
+            @if($limitFromCurrent && $currAirport !== '')
+                <span class="so-fb-tag so-fb-tag-blue">Current DEP: {{ $currAirport }}</span>
+            @endif
+            @if($bidLockEnabled)
+                <span class="so-fb-tag so-fb-tag-amber">Bid Lock</span>
+            @endif
+            @if($restrictAircraftAtDeparture)
+                <span class="so-fb-tag so-fb-tag-cyan">AC @ DEP</span>
+            @endif
+            @if($restrictBookedAircraft)
+                <span class="so-fb-tag so-fb-tag-cyan">AC Not Booked</span>
+            @endif
+            @if($bookableOnly)
+                <span class="so-fb-tag so-fb-tag-violet">Bookable Only</span>
+            @endif
+        </div>
+        @endif
+
         <div class="row g-2 align-items-end">
 
             {{-- Airline --}}
             <div class="col-6 col-md-3 col-lg-2">
                 <div class="so-filter-label">Airline</div>
-                <input class="so-input" name="airline" list="so-airline-list"
+                <input class="so-input {{ $curAirline !== '' ? 'so-fb-input-on' : '' }}" name="airline" list="so-airline-list"
                        value="{{ old('airline', request('airline')) }}" placeholder="DLH / QTR">
                 <datalist id="so-airline-list">
                     @foreach($airlineOptions as $ao)
@@ -158,14 +214,14 @@ html.ap-light .so-fb-chev{color:rgba(0,0,0,.5)}
             {{-- Departure --}}
             <div class="col-6 col-md-2 col-lg-2">
                 <div class="so-filter-label">{{ __('skyops::skyops.dep_departure') }}</div>
-                <input class="so-input" name="dep" list="so-airport-list"
+                <input class="so-input {{ $curDep !== '' ? 'so-fb-input-on' : '' }}" name="dep" list="so-airport-list"
                        value="{{ old('dep', request('dep')) }}" placeholder="EDDF">
             </div>
 
             {{-- Arrival --}}
             <div class="col-6 col-md-2 col-lg-2">
                 <div class="so-filter-label">{{ __('skyops::skyops.dep_arrival') }}</div>
-                <input class="so-input" name="arr" list="so-airport-list"
+                <input class="so-input {{ $curArr !== '' ? 'so-fb-input-on' : '' }}" name="arr" list="so-airport-list"
                        value="{{ old('arr', request('arr')) }}" placeholder="EGLL">
                 <datalist id="so-airport-list">
                     @foreach($airportOptions as $ap)
@@ -183,14 +239,14 @@ html.ap-light .so-fb-chev{color:rgba(0,0,0,.5)}
                            min="0" max="18" step="0.5" value="{{ $minHVal }}"
                            class="so-fb-range" style="min-width:80px;flex:1;">
                     <div class="so-fb-h-field">
-                        <input type="number" id="soFbMinNum" class="so-fb-h-num"
+                        <input type="number" id="soFbMinNum" class="so-fb-h-num {{ $hasMin ? 'so-fb-input-on' : '' }}"
                                min="0" max="18" step="0.5"
                                value="{{ $minHVal > 0 ? $minHVal : '' }}" placeholder="0">
                         <span>h min</span>
                     </div>
                     <span class="so-fb-h-sep">—</span>
                     <div class="so-fb-h-field">
-                        <input type="number" id="soFbMaxNum" name="max_ft_h" class="so-fb-h-num"
+                        <input type="number" id="soFbMaxNum" name="max_ft_h" class="so-fb-h-num {{ $hasMax ? 'so-fb-input-on' : '' }}"
                                min="0" max="24" step="0.5"
                                value="{{ $maxHVal !== '' ? $maxHVal : '' }}" placeholder="∞">
                         <span>h max</span>
@@ -230,6 +286,18 @@ html.ap-light .so-fb-chev{color:rgba(0,0,0,.5)}
                 </div>
             </div>
         </div>
+
+        @if($hasActiveFilters)
+        <div class="row g-2 mt-1">
+            <div class="col-12">
+                <div class="d-flex gap-1 flex-wrap align-items-center">
+                    @foreach($activeFilterLabels as $lbl)
+                        <span class="so-fb-tag so-fb-tag-blue">{{ $lbl }}</span>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+        @endif
 
     </form>
 </div>
@@ -333,8 +401,20 @@ html.ap-light .so-fb-chev{color:rgba(0,0,0,.5)}
                 @if($showDistance)<div class="so-fb-td r"><div class="so-fb-dist">{{ $dist_txt ?? '—' }}</div></div>@endif
 
                 <div class="so-fb-td c">
-                    @if($typeTxt)<span class="so-fb-tag so-fb-tag-{{ $typeCol }}">{{ $typeTxt }}</span>
-                    @else<span style="color:var(--ap-muted);">—</span>@endif
+                    <div class="so-fb-type-stack">
+                        @if($typeTxt)<span class="so-fb-tag so-fb-tag-{{ $typeCol }}">{{ $typeTxt }}</span>
+                        @else<span style="color:var(--ap-muted);">—</span>@endif
+
+                        @if($showBookingStatus && !empty($f->so_bid_blocked))
+                            <span class="so-fb-tag so-fb-tag-amber" style="font-size:.58rem;">Bid locked</span>
+                        @elseif($showBookingStatus && !empty($f->so_bid_own))
+                            <span class="so-fb-tag so-fb-tag-green" style="font-size:.58rem;">Your bid</span>
+                        @endif
+
+                        @if($showBookingStatus && isset($f->so_has_bookable_aircraft) && $f->so_has_bookable_aircraft === false)
+                            <span class="so-fb-tag so-fb-tag-cyan" style="font-size:.58rem;">No AC @ DEP</span>
+                        @endif
+                    </div>
                 </div>
 
                 <div class="so-fb-td c">
@@ -394,6 +474,23 @@ html.ap-light .so-fb-chev{color:rgba(0,0,0,.5)}
                     <div class="so-fb-dg-label">{{ __('skyops::skyops.dep_flight_type') }}</div>
                     <div class="so-fb-dg-val">
                         <span class="so-fb-tag so-fb-tag-{{ $typeCol }}" style="font-size:.72rem;">{{ $typeTxt }}</span>
+                    </div>
+                </div>
+            @endif
+            @if($showBookingStatus && $respectPhpvmsSettings)
+                <div>
+                    <div class="so-fb-dg-label">Booking</div>
+                    <div class="so-fb-dg-val">
+                        @if(!empty($f->so_bid_blocked))
+                            <span class="so-fb-tag so-fb-tag-amber" style="font-size:.72rem;">Bid locked by another pilot</span>
+                        @elseif(!empty($f->so_bid_own))
+                            <span class="so-fb-tag so-fb-tag-green" style="font-size:.72rem;">You already have a bid</span>
+                        @else
+                            <span class="so-fb-tag so-fb-tag-green" style="font-size:.72rem;">Bid available</span>
+                        @endif
+                        @if(isset($f->so_has_bookable_aircraft) && $f->so_has_bookable_aircraft === false)
+                            <span class="so-fb-tag so-fb-tag-cyan" style="font-size:.72rem;margin-left:4px;">No eligible aircraft at departure</span>
+                        @endif
                     </div>
                 </div>
             @endif

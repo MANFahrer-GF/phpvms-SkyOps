@@ -4,10 +4,12 @@ namespace Modules\SkyOps\Services;
 
 use Carbon\Carbon;
 use App\Models\Flight;
+use App\Models\Bid;
 use App\Models\Airline;
 use App\Models\Airport;
 use App\Models\Aircraft;
 use App\Models\Subfleet;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Modules\SkyOps\Helpers\UnitHelper; // Only used as fallback for raw numeric values
@@ -19,16 +21,23 @@ class FlightBoardService
      * Replicates the original query logic: dedup by airline_id+flight_number+dpt_time,
      * flight-time range filter, type filter, with configurable sort order.
      */
-    public function getFlightBoard(array $filters): array
+    public function getFlightBoard(array $filters, ?User $user = null): array
     {
         $now  = Carbon::now('UTC');
         $from = $now->format('H:i:s');
         $cfg  = config('skyops.departures', []);
+        $flightModel = new Flight();
+        $flightTable = $flightModel->getTable();
+        $bidTable = (new Bid())->getTable();
+        $userId = (int) ($user?->id ?? 0);
+        $currAirport = strtoupper(trim((string) ($user?->curr_airport_id ?? '')));
 
         $fltAirline = strtoupper(trim($filters['airline'] ?? ''));
         $fltDep     = strtoupper(trim($filters['dep'] ?? ''));
         $fltArr     = strtoupper(trim($filters['arr'] ?? ''));
         $fltType    = strtoupper(trim($filters['type'] ?? ''));
+        $cargoTypes = $this->cargoFlightTypes();
+        $paxTypes   = $this->paxFlightTypes($cargoTypes);
         $minFtM     = $this->toMinutes($filters['min_ft_h'] ?? null);
         $maxFtM     = $this->toMinutes($filters['max_ft_h'] ?? null);
 
@@ -50,18 +59,29 @@ class FlightBoardService
         // Resolve aircraft type source early (needed for eager loading decision)
         $typeSource = $cfg['aircraft_type_source'] ?? 'flight_icao';
 
+        // Optional compatibility mode with phpVMS operational settings.
+        // Off by default to preserve current SkyOps behavior.
+        $respectPhpvmsSettings = (bool) ($cfg['respect_phpvms_settings'] ?? false);
+        $bookableOnly = $respectPhpvmsSettings && (bool) ($cfg['bookable_only'] ?? false);
+        $showBookingStatus = $respectPhpvmsSettings && (bool) ($cfg['show_booking_status'] ?? true);
+        $limitFromCurrent = $respectPhpvmsSettings && (bool) setting('pilots.only_flights_from_current', false);
+        $bidLockEnabled = $respectPhpvmsSettings && (bool) setting('bids.disable_flight_on_bid', false);
+        $restrictAircraftAtDeparture = $respectPhpvmsSettings && (bool) setting('pireps.only_aircraft_at_dpt_airport', false);
+        $restrictBookedAircraft = $respectPhpvmsSettings && (bool) setting('bids.block_aircraft', false);
+
         // Dedup subquery: one flight per airline+number+dpt_time
         $idsSub = Flight::query()
             ->selectRaw('MIN(id) as id')
             ->where('active', 1)
             ->where('visible', 1)
+            ->when($limitFromCurrent && $currAirport !== '', fn($q) => $q->where('dpt_airport_id', $currAirport))
             ->when($fltDep, fn($q) => $q->where('dpt_airport_id', $fltDep))
             ->when($fltArr, fn($q) => $q->where('arr_airport_id', $fltArr))
             ->when($fltAirline, function ($q) use ($fltAirline) {
                 $q->whereHas('airline', fn($qa) => $qa->where('icao', $fltAirline)->orWhere('iata', $fltAirline));
             })
-            ->when($fltType === 'PAX', fn($q) => $q->whereIn('flight_type', ['P', 'J']))
-            ->when($fltType === 'CARGO', fn($q) => $q->where('flight_type', 'C'))
+            ->when($fltType === 'PAX', fn($q) => $q->whereIn('flight_type', $paxTypes))
+            ->when($fltType === 'CARGO', fn($q) => $q->whereIn('flight_type', $cargoTypes))
             ->when(!is_null($minFtM) || !is_null($maxFtM), function ($q) use ($minFtM, $maxFtM) {
                 $q->whereNotNull('flight_time');
                 $mn = $minFtM;
@@ -89,6 +109,17 @@ class FlightBoardService
                 default => ['airline:id,icao,iata,name,logo', 'airline.subfleets'],
             });
 
+        if ($bookableOnly && $bidLockEnabled) {
+            $flights->whereNotExists(function ($q) use ($bidTable, $flightTable, $userId) {
+                $q->select(DB::raw(1))
+                    ->from($bidTable)
+                    ->whereColumn("{$bidTable}.flight_id", "{$flightTable}.id");
+                if ($userId > 0) {
+                    $q->where("{$bidTable}.user_id", '<>', $userId);
+                }
+            });
+        }
+
         // Apply configurable sort order
         switch ($sortMode) {
             case 'time':
@@ -113,6 +144,25 @@ class FlightBoardService
         }
 
         $flights = $flights->simplePaginate(100)->withQueryString();
+
+        // Optional bid lock state per flight (to expose phpVMS bid constraints in the board).
+        $blockedByBid = [];
+        $ownBid = [];
+        if ($showBookingStatus && $bidLockEnabled && $flights->getCollection()->isNotEmpty()) {
+            $flightIds = $flights->getCollection()->pluck('id')->all();
+            $bidRows = DB::table($bidTable)
+                ->whereIn('flight_id', $flightIds)
+                ->select('flight_id', 'user_id')
+                ->get();
+            foreach ($bidRows as $bidRow) {
+                $fid = (string) $bidRow->flight_id;
+                if ($userId > 0 && (int) $bidRow->user_id === $userId) {
+                    $ownBid[$fid] = true;
+                    continue;
+                }
+                $blockedByBid[$fid] = true;
+            }
+        }
 
         // Batch-load airport names
         $airportIds = collect([
@@ -330,6 +380,55 @@ class FlightBoardService
             });
         }
 
+        // Optional aircraft-availability refinement for phpVMS compatibility mode.
+        // This mirrors the departure-airport/block-aircraft constraints at a board level.
+        if (
+            $showBookingStatus
+            && ($restrictAircraftAtDeparture || $restrictBookedAircraft)
+            && in_array($typeSource, ['flight_icao', 'aircraft_icao'], true)
+            && $flights->getCollection()->isNotEmpty()
+        ) {
+            $typeInfo = $this->resolveAircraftTypesByFlightAvailability(
+                $flights->getCollection(),
+                $activeOnly,
+                $restrictAircraftAtDeparture,
+                $restrictBookedAircraft,
+                $userId
+            );
+
+            $typesByFlight = $typeInfo['types_by_flight'];
+            $hasBookableAircraft = $typeInfo['has_bookable_aircraft'];
+
+            $flights->getCollection()->transform(function ($flight) use ($typesByFlight, $hasBookableAircraft) {
+                $fid = (string) $flight->id;
+                if (array_key_exists($fid, $typesByFlight)) {
+                    $flight->aircraft_types = collect($typesByFlight[$fid]);
+                }
+                if (array_key_exists($fid, $hasBookableAircraft)) {
+                    $flight->so_has_bookable_aircraft = $hasBookableAircraft[$fid];
+                }
+                return $flight;
+            });
+
+            if ($bookableOnly) {
+                $filtered = $flights->getCollection()
+                    ->filter(fn($flight) => ($flight->so_has_bookable_aircraft ?? true) === true)
+                    ->values();
+                $flights->setCollection($filtered);
+            }
+        }
+
+        // Attach booking-state flags for the UI (optional, compatibility mode only).
+        if ($showBookingStatus && $flights->getCollection()->isNotEmpty()) {
+            $flights->getCollection()->transform(function ($flight) use ($blockedByBid, $ownBid) {
+                $fid = (string) $flight->id;
+                $flight->so_bid_blocked = isset($blockedByBid[$fid]);
+                $flight->so_bid_own = isset($ownBid[$fid]);
+                $flight->so_bookable = !$flight->so_bid_blocked && (($flight->so_has_bookable_aircraft ?? true) === true);
+                return $flight;
+            });
+        }
+
         // Filter options for datalists
         $airlineOptions = Airline::query()
             ->select(['id', 'icao', 'iata', 'name'])
@@ -383,6 +482,137 @@ class FlightBoardService
             'showDistance'    => $showDistance,
             'showFlightTime' => $showFlightTime,
             'sortMode'       => $sortMode,
+            'respectPhpvmsSettings' => $respectPhpvmsSettings,
+            'bookableOnly'          => $bookableOnly,
+            'showBookingStatus'     => $showBookingStatus,
+            'limitFromCurrent'      => $limitFromCurrent,
+            'currAirport'           => $currAirport,
+            'bidLockEnabled'        => $bidLockEnabled,
+            'restrictAircraftAtDeparture' => $restrictAircraftAtDeparture,
+            'restrictBookedAircraft'      => $restrictBookedAircraft,
+        ];
+    }
+
+    /**
+     * Resolve available aircraft ICAO types per displayed flight while honoring
+     * optional phpVMS aircraft restrictions.
+     *
+     * Returns:
+     * - types_by_flight: flight_id => [ICAO,...]
+     * - has_bookable_aircraft: flight_id => bool
+     */
+    protected function resolveAircraftTypesByFlightAvailability(
+        $flightCollection,
+        bool $activeOnly,
+        bool $restrictAircraftAtDeparture,
+        bool $restrictBookedAircraft,
+        int $userId
+    ): array {
+        $flightIds = $flightCollection->pluck('id')->map(fn($id) => (string) $id)->values()->all();
+        if (empty($flightIds)) {
+            return ['types_by_flight' => [], 'has_bookable_aircraft' => []];
+        }
+
+        $flightModel = new Flight();
+        $pivotTable = null;
+        $pivotFlightKey = 'flight_id';
+        $pivotSubfleetKey = 'subfleet_id';
+
+        foreach (['subfleets', 'subfleet'] as $tryName) {
+            if (!method_exists($flightModel, $tryName)) {
+                continue;
+            }
+            try {
+                $rel = $flightModel->{$tryName}();
+                $pivotTable       = $rel->getTable();
+                $pivotFlightKey   = $rel->getForeignPivotKeyName();
+                $pivotSubfleetKey = $rel->getRelatedPivotKeyName();
+                break;
+            } catch (\Throwable $e) {
+                // fall through to next relation name
+            }
+        }
+
+        if (!$pivotTable) {
+            return ['types_by_flight' => [], 'has_bookable_aircraft' => []];
+        }
+
+        $pivotRows = DB::table($pivotTable)
+            ->whereIn($pivotFlightKey, $flightIds)
+            ->select($pivotFlightKey, $pivotSubfleetKey)
+            ->distinct()
+            ->get();
+
+        $subfleetsByFlight = [];
+        $allSubfleetIds = [];
+        foreach ($pivotRows as $row) {
+            $fid = (string) $row->{$pivotFlightKey};
+            $sid = (int) $row->{$pivotSubfleetKey};
+            $subfleetsByFlight[$fid][] = $sid;
+            $allSubfleetIds[$sid] = true;
+        }
+
+        if (empty($allSubfleetIds)) {
+            return ['types_by_flight' => [], 'has_bookable_aircraft' => []];
+        }
+
+        $acTable = (new Aircraft())->getTable();
+        $bidTable = (new Bid())->getTable();
+        $acQuery = DB::table($acTable)
+            ->leftJoin($bidTable, "{$bidTable}.aircraft_id", '=', "{$acTable}.id")
+            ->whereIn("{$acTable}.subfleet_id", array_keys($allSubfleetIds))
+            ->whereNull("{$acTable}.deleted_at")
+            ->whereNotNull("{$acTable}.icao")
+            ->where("{$acTable}.icao", '!=', '');
+        if ($activeOnly) {
+            $acQuery->where("{$acTable}.status", 'A');
+        }
+
+        $acRows = $acQuery->select(
+            "{$acTable}.subfleet_id",
+            "{$acTable}.icao",
+            "{$acTable}.airport_id",
+            "{$bidTable}.user_id as bid_user_id"
+        )->get();
+
+        $aircraftBySubfleet = [];
+        foreach ($acRows as $row) {
+            $aircraftBySubfleet[(int) $row->subfleet_id][] = $row;
+        }
+
+        $depByFlight = [];
+        foreach ($flightCollection as $flight) {
+            $depByFlight[(string) $flight->id] = strtoupper((string) $flight->dpt_airport_id);
+        }
+
+        $typesByFlight = [];
+        $hasBookableAircraft = [];
+        foreach ($depByFlight as $fid => $depIcao) {
+            if (!isset($subfleetsByFlight[$fid])) {
+                continue;
+            }
+
+            $types = [];
+            foreach ($subfleetsByFlight[$fid] as $sfid) {
+                foreach ($aircraftBySubfleet[$sfid] ?? [] as $aircraft) {
+                    if ($restrictAircraftAtDeparture && strtoupper((string) $aircraft->airport_id) !== $depIcao) {
+                        continue;
+                    }
+                    if ($restrictBookedAircraft && !empty($aircraft->bid_user_id) && (int) $aircraft->bid_user_id !== $userId) {
+                        continue;
+                    }
+                    $types[] = strtoupper((string) $aircraft->icao);
+                }
+            }
+
+            $types = collect($types)->unique()->sort()->values()->all();
+            $typesByFlight[$fid] = $types;
+            $hasBookableAircraft[$fid] = !empty($types);
+        }
+
+        return [
+            'types_by_flight' => $typesByFlight,
+            'has_bookable_aircraft' => $hasBookableAircraft,
         ];
     }
 
@@ -397,6 +627,87 @@ class FlightBoardService
         $h = max(0, min(24, $h));
         $h = round($h * 2) / 2;
         return (int) round($h * 60);
+    }
+
+    /**
+     * Resolve cargo flight type codes from phpVMS enum constants.
+     * Falls back to known defaults for older/newer setups.
+     */
+    protected function cargoFlightTypes(): array
+    {
+        $fallback = ['F', 'A', 'H', 'M', 'Q', 'R', 'L'];
+        $enumClass = '\App\Models\Enums\FlightType';
+
+        if (!class_exists($enumClass)) {
+            return $fallback;
+        }
+
+        $constants = [
+            'SCHED_CARGO',
+            'ADDITIONAL_CARGO',
+            'CHARTER_CARGO_MAIL',
+            'MAIL_SERVICE',
+            'CARGO_IN_CABIN',
+            'ADDTL_CARGO_IN_CABIN',
+            'CHARTER_CARGO_IN_CABIN',
+        ];
+
+        $resolved = [];
+        foreach ($constants as $constant) {
+            $fqcn = $enumClass . '::' . $constant;
+            if (defined($fqcn)) {
+                $val = constant($fqcn);
+                if (is_string($val) && $val !== '') {
+                    $resolved[] = strtoupper($val);
+                }
+            }
+        }
+
+        $resolved = array_values(array_unique($resolved));
+        return !empty($resolved) ? $resolved : $fallback;
+    }
+
+    /**
+     * Resolve passenger-ish codes for the PAX chip.
+     */
+    protected function paxFlightTypes(array $cargoTypes): array
+    {
+        $fallback = ['J', 'C', 'G', 'E', 'I', 'N', 'D', 'S', 'B', 'O'];
+        $enumClass = '\App\Models\Enums\FlightType';
+
+        if (!class_exists($enumClass)) {
+            return array_values(array_diff($fallback, $cargoTypes));
+        }
+
+        $constants = [
+            'SCHED_PAX',
+            'CHARTER_PAX_ONLY',
+            'ADDTL_PAX',
+            'VIP',
+            'AMBULANCE',
+            'AIR_TAXI',
+            'GENERAL_AVIATION',
+            'SHUTTLE',
+            'ADDTL_SHUTTLE',
+            'CHARTER_SPECIAL',
+        ];
+
+        $resolved = [];
+        foreach ($constants as $constant) {
+            $fqcn = $enumClass . '::' . $constant;
+            if (defined($fqcn)) {
+                $val = constant($fqcn);
+                if (is_string($val) && $val !== '') {
+                    $resolved[] = strtoupper($val);
+                }
+            }
+        }
+
+        if (empty($resolved)) {
+            $resolved = $fallback;
+        }
+
+        return array_values(array_unique(array_diff($resolved, $cargoTypes)));
     }
 
     /**

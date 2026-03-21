@@ -80,7 +80,31 @@ After changing values, clear the cache: visit `/update` or run `php artisan conf
 | `locale.*` | `auto` | Date/time/number format — auto-detects from phpVMS language |
 | `health_mode` | `activity` | Airline health: `activity`, `financial`, `combined` |
 | `departures.aircraft_type_source` | `flight_icao` | Aircraft types: `flight_icao`, `aircraft_icao`, `subfleet_type` |
+| `departures.respect_phpvms_settings` | `false` | Optional phpVMS-sync mode for departures (keep default `false` to preserve classic SkyOps behavior) |
+| `departures.bookable_only` | `false` | Only used with phpVMS-sync mode: show only bookable flights |
+| `departures.show_booking_status` | `true` | Only used with phpVMS-sync mode: show bid/aircraft availability badges |
 | `cache_ttl.*` | `3–15` | Cache duration in minutes per page (0 = disabled) |
+
+### Departures phpVMS Sync (Optional)
+
+The departures board can now optionally honor selected phpVMS operational settings:
+
+- `pilots.only_flights_from_current`
+- `bids.disable_flight_on_bid`
+- `pireps.only_aircraft_at_dpt_airport`
+- `bids.block_aircraft`
+
+Recommended default:
+
+```php
+'departures' => [
+    'respect_phpvms_settings' => false, // keep current behavior
+    'bookable_only'           => false, // informational board
+    'show_booking_status'     => true,  // only visible if sync=true
+]
+```
+
+Set `respect_phpvms_settings` to `true` only if you want the departures page to behave closer to phpVMS booking restrictions.
 
 ---
 

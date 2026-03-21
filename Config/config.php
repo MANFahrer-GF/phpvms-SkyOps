@@ -367,6 +367,24 @@ return [
     | show_flight_time: Show the duration column and flight-time slider
     |                   filter (true/false).
     |
+    | respect_phpvms_settings:
+    |   false (default)  Keep current SkyOps behavior (show broad departures).
+    |   true             Optionally honor selected phpVMS restrictions:
+    |                    - pilots.only_flights_from_current
+    |                    - bids.disable_flight_on_bid
+    |                    - pireps.only_aircraft_at_dpt_airport
+    |                    - bids.block_aircraft
+    |
+    | bookable_only:
+    |   false (default)  Keep non-bookable flights visible (informational board).
+    |   true             Show only flights that appear bookable under the
+    |                    active phpVMS restrictions above.
+    |
+    | show_booking_status:
+    |   true (default)   Show compatibility badges/hints when
+    |                    respect_phpvms_settings is enabled.
+    |   false            Keep board visuals minimal.
+    |
     */
     'departures' => [
         'sort_mode'        => 'auto',
@@ -374,6 +392,9 @@ return [
         'show_arr_time'    => 'auto',
         'show_distance'    => true,
         'show_flight_time' => true,
+        'respect_phpvms_settings' => false,
+        'bookable_only'           => false,
+        'show_booking_status'     => true,
 
         /*
         | How to determine aircraft types shown in the flight detail panel.

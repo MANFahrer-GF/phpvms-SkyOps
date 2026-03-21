@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.4-beta.1] — 2026-03-21
+
+### Fixed
+- **Departures Flight Type Filter**: Corrected PAX/Cargo mapping to align with phpVMS flight type enums (Cargo now correctly includes `F` and related cargo codes)
+- **Departures Filter UI**: Active filter state is now clearly visible for chips and input filters; added active-filter summary badges
+
+### Added
+- **Optional phpVMS Sync Mode for Departures** (default OFF):  
+  New config options under `departures`:
+  - `respect_phpvms_settings` (default `false`)
+  - `bookable_only` (default `false`)
+  - `show_booking_status` (default `true`)
+- **Optional booking/availability badges** on departures rows/details when sync mode is enabled
+- **Optional compatibility behavior** for:
+  - `pilots.only_flights_from_current`
+  - `bids.disable_flight_on_bid`
+  - `pireps.only_aircraft_at_dpt_airport`
+  - `bids.block_aircraft`
+
+### Documentation
+- Updated `README.md` with a new section for optional Departures phpVMS sync settings
+- Updated in-app Guide (Admin → Departures) to show the new live config values
+
+---
+
 ## [1.0.3] — 2026-03-19
 
 ### Added

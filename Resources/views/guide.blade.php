@@ -41,6 +41,9 @@
         'dep_arr'       => config('skyops.departures.show_arr_time', 'auto'),
         'dep_dist'      => config('skyops.departures.show_distance', true),
         'dep_ft'        => config('skyops.departures.show_flight_time', true),
+        'dep_phpvms'    => config('skyops.departures.respect_phpvms_settings', false),
+        'dep_bookable'  => config('skyops.departures.bookable_only', false),
+        'dep_bookstat'  => config('skyops.departures.show_booking_status', true),
         'dep_types'     => config('skyops.departures.aircraft_type_source', 'flight_icao'),
         'dep_active'    => config('skyops.departures.aircraft_active_only', true),
         'cache_dash'    => config('skyops.cache_ttl.dashboard', 3),
@@ -649,6 +652,9 @@ html.ap-light .so-gd-cfg{box-shadow:0 1px 6px rgba(0,0,0,.05)}
         <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">show_arr_time</span><span class="so-gd-cfg-val">{{ is_bool($cfg['dep_arr']) ? ($cfg['dep_arr'] ? 'true' : 'false') : $cfg['dep_arr'] }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_admin_dep_arr') }}</span></div>
         <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">show_distance</span><span class="so-gd-cfg-val">{{ $cfg['dep_dist'] ? 'true' : 'false' }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_show_dist') }}</span></div>
         <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">show_flight_time</span><span class="so-gd-cfg-val">{{ $cfg['dep_ft'] ? 'true' : 'false' }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_show_ft') }}</span></div>
+        <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">respect_phpvms_settings</span><span class="so-gd-cfg-val">{{ $cfg['dep_phpvms'] ? 'true' : 'false' }}</span><span class="so-gd-cfg-desc">Optional: honor pilots.only_flights_from_current, bids.disable_flight_on_bid, pireps.only_aircraft_at_dpt_airport and bids.block_aircraft.</span></div>
+        <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">bookable_only</span><span class="so-gd-cfg-val">{{ $cfg['dep_bookable'] ? 'true' : 'false' }}</span><span class="so-gd-cfg-desc">When enabled, shows only flights currently bookable under active phpVMS restrictions.</span></div>
+        <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">show_booking_status</span><span class="so-gd-cfg-val">{{ $cfg['dep_bookstat'] ? 'true' : 'false' }}</span><span class="so-gd-cfg-desc">Shows bid lock / aircraft availability badges on the departures board (requires respect_phpvms_settings=true).</span></div>
         <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">aircraft_type_source</span><span class="so-gd-cfg-val">{{ $cfg['dep_types'] }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_admin_dep_types') }}</span></div>
         <div class="so-gd-cfg-row"><span class="so-gd-cfg-key">aircraft_active_only</span><span class="so-gd-cfg-val">{{ $cfg['dep_active'] ? 'true' : 'false' }}</span><span class="so-gd-cfg-desc">{{ __('skyops::skyops.guide_cfg_active_only') }}</span></div>
     </div>
