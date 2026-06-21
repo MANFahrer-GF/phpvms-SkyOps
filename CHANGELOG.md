@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.4-beta.2] — 2026-06-21
+
+### Fixed
+- **Fleet list showed soft-deleted aircraft**: `FleetService::getAircraftList()` and the
+  fleet filter datalists (ICAO types, registrations) used `DB::table()`, which bypasses
+  Eloquent's `SoftDeletes` scope, so deleted aircraft (and aircraft under deleted subfleets)
+  appeared in the "All Aircraft" list and filter dropdowns. Added explicit
+  `whereNull(deleted_at)` guards on aircraft and subfleets, matching the rest of the module
+  (`AirlineService`, `FlightBoardService`, `DashboardService`). The PIREP count/flight-time
+  left join now also ignores soft-deleted PIREPs so totals stay accurate.
+
+---
+
 ## [1.0.4-beta.1] — 2026-03-21
 
 ### Fixed

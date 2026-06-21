@@ -20,7 +20,16 @@ class FleetService
         $q = DB::table('aircraft')
             ->join('subfleets', 'subfleets.id', '=', 'aircraft.subfleet_id')
             ->join('airlines', 'airlines.id', '=', 'subfleets.airline_id')
-            ->leftJoin('pireps', 'pireps.aircraft_id', '=', 'aircraft.id')
+            ->leftJoin('pireps', function ($join) {
+                // Keep the left join (aircraft with zero PIREPs must remain) but
+                // ignore soft-deleted PIREPs so cnt/mins are accurate.
+                $join->on('pireps.aircraft_id', '=', 'aircraft.id')
+                     ->whereNull('pireps.deleted_at');
+            })
+            // DB::table bypasses Eloquent's SoftDeletes scope, so exclude
+            // soft-deleted aircraft/subfleets explicitly (matches the rest of the module).
+            ->whereNull('aircraft.deleted_at')
+            ->whereNull('subfleets.deleted_at')
             ->select([
                 'aircraft.id', 'aircraft.registration', 'aircraft.name as ac_name',
                 'aircraft.icao as ac_icao', 'airlines.id as al_id',
@@ -97,11 +106,14 @@ class FleetService
                     ->distinct()->orderBy('airlines.icao')->orderBy('subfleets.type')
                     ->get(['airlines.icao as icao', 'subfleets.type as type']),
                 'icaoTypes' => DB::table('aircraft')->select('icao')
+                    ->whereNull('deleted_at')
                     ->whereNotNull('icao')->where('icao', '<>', '')
                     ->distinct()->orderBy('icao')->pluck('icao'),
                 'registrations' => DB::table('aircraft as ac')
                     ->join('subfleets as sf', 'sf.id', '=', 'ac.subfleet_id')
                     ->join('airlines as al', 'al.id', '=', 'sf.airline_id')
+                    ->whereNull('ac.deleted_at')
+                    ->whereNull('sf.deleted_at')
                     ->orderBy('al.icao')->orderBy('ac.registration')
                     ->get(['ac.registration as reg', 'al.icao as icao', 'sf.type as subtype']),
                 'airportNames' => DB::table('airports')
