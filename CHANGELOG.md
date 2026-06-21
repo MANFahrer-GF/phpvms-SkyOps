@@ -10,8 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.4] — 2026-06-21
 
 Consolidated stable release (supersedes the unreleased `1.0.4-beta.1`/`beta.2`).
-All new behavior is **off by default** — an install upgrading from `1.0.3` sees no
-functional change until it opts in.
+The new **phpVMS sync mode is off by default** (master switch `respect_phpvms_settings=false`),
+so its operational restrictions stay dormant until you opt in. Note the **one intentional,
+always-on change**: the Departures PAX/Cargo chip classification was corrected to match the
+phpVMS flight-type enums (see "Changed" below) — this is visible on the board without enabling
+sync mode.
 
 ### Added
 - **Optional phpVMS Sync Mode for Departures** (default **OFF**):
@@ -36,12 +39,21 @@ functional change until it opts in.
   `whereNull(deleted_at)` guards on aircraft and subfleets, matching the rest of the module
   (`AirlineService`, `FlightBoardService`, `DashboardService`). The PIREP count/flight-time
   left join now also ignores soft-deleted PIREPs so totals stay accurate.
-- **Departures Flight Type Filter**: Corrected PAX/Cargo mapping to align with phpVMS flight
-  type enums (Cargo now correctly includes `F` and related cargo codes).
 - **Departures Filter UI**: Active filter state is now clearly visible for chips and input
   filters; added active-filter summary badges.
+- **`bookable_only` no longer corrupts pagination** (sync mode): the aircraft-availability
+  constraint is now applied in SQL *before* `simplePaginate`, instead of filtering the
+  already-paginated page in PHP — so page counts and the "next" link stay correct. The
+  "no subfleet assigned ⇒ bookable by default" semantics are preserved exactly.
+- **`bookable_only` decoupled from `show_booking_status` and `aircraft_type_source`** (sync
+  mode): it previously did nothing unless `show_booking_status` was on and the type source was
+  `flight_icao`/`aircraft_icao`. It now filters independently of both.
 
 ### Changed
+- **Departures PAX/Cargo chip classification corrected** (always on): the PAX and Cargo filter
+  chips now follow the phpVMS flight-type enums. Real scheduled cargo (`F`, plus mail/cargo
+  codes) appears under **Cargo**; passenger charter (`C`) now appears under **PAX** instead of
+  Cargo; positioning (`P`) is no longer grouped under PAX. The full board ("All") is unchanged.
 - **Dashboard "recent activity" row hardened**: the relative-time / distance / fuel cells now
   resolve their values defensively (handles both value objects and plain numerics, guards with
   `try/catch`, and respects `features.show_fuel`) instead of calling `->local()` inline.

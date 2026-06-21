@@ -58,6 +58,7 @@ class FlightBoardService
 
         // Resolve aircraft type source early (needed for eager loading decision)
         $typeSource = $cfg['aircraft_type_source'] ?? 'flight_icao';
+        $activeOnly = $cfg['aircraft_active_only'] ?? true;
 
         // Optional compatibility mode with phpVMS operational settings.
         // Off by default to preserve current SkyOps behavior.
@@ -96,6 +97,59 @@ class FlightBoardService
                 }
             })
             ->groupBy('airline_id', 'flight_number', 'dpt_time');
+
+        // Bookable-only aircraft availability is pushed into SQL *before* pagination so
+        // page counts and "next" links stay correct. This mirrors the exact semantics of
+        // resolveAircraftTypesByFlightAvailability(): a flight is hidden ONLY if it HAS a
+        // subfleet assignment but none of its aircraft are eligible (at-departure /
+        // not-booked-by-others). Flights with no subfleet pivot are treated as bookable by
+        // default (the resolver's `?? true`), so we keep them.
+        if ($bookableOnly && ($restrictAircraftAtDeparture || $restrictBookedAircraft)) {
+            $pivot = $this->resolvePivotMeta();
+            if ($pivot['table']) {
+                $acTable = (new Aircraft())->getTable();
+                $idsSub->where(function ($outer) use (
+                    $pivot, $acTable, $bidTable, $flightTable,
+                    $activeOnly, $restrictAircraftAtDeparture, $restrictBookedAircraft, $userId
+                ) {
+                    // Keep: flight has no subfleet assignment at all (bookable by default)...
+                    $outer->whereNotExists(function ($np) use ($pivot, $flightTable) {
+                        $np->selectRaw('1')
+                            ->from($pivot['table'])
+                            ->whereColumn($pivot['table'] . '.' . $pivot['flightKey'], $flightTable . '.id');
+                    })
+                    // ...OR it has at least one eligible aircraft in an assigned subfleet.
+                    ->orWhereExists(function ($q) use (
+                        $pivot, $acTable, $bidTable, $flightTable,
+                        $activeOnly, $restrictAircraftAtDeparture, $restrictBookedAircraft, $userId
+                    ) {
+                        $q->selectRaw('1')
+                            ->from($pivot['table'])
+                            ->join($acTable, $acTable . '.subfleet_id', '=', $pivot['table'] . '.' . $pivot['subfleetKey'])
+                            ->whereColumn($pivot['table'] . '.' . $pivot['flightKey'], $flightTable . '.id')
+                            ->whereNull($acTable . '.deleted_at')
+                            ->whereNotNull($acTable . '.icao')
+                            ->where($acTable . '.icao', '!=', '');
+                        if ($activeOnly) {
+                            $q->where($acTable . '.status', 'A');
+                        }
+                        if ($restrictAircraftAtDeparture) {
+                            $q->whereColumn($acTable . '.airport_id', $flightTable . '.dpt_airport_id');
+                        }
+                        if ($restrictBookedAircraft) {
+                            $q->whereNotExists(function ($qb) use ($bidTable, $acTable, $userId) {
+                                $qb->selectRaw('1')
+                                    ->from($bidTable)
+                                    ->whereColumn($bidTable . '.aircraft_id', $acTable . '.id');
+                                if ($userId > 0) {
+                                    $qb->where($bidTable . '.user_id', '<>', $userId);
+                                }
+                            });
+                        }
+                    });
+                });
+            }
+        }
 
         $flights = Flight::query()
             ->select([
@@ -175,7 +229,6 @@ class FlightBoardService
             ->keyBy('id');
 
         // Enrich with aircraft types (config-driven)
-        $activeOnly = $cfg['aircraft_active_only'] ?? true;
         $_debugPivot = 'n/a';
         $_debugRelation = 'n/a';
         $_debugAssigned = 0;
@@ -409,13 +462,9 @@ class FlightBoardService
                 }
                 return $flight;
             });
-
-            if ($bookableOnly) {
-                $filtered = $flights->getCollection()
-                    ->filter(fn($flight) => ($flight->so_has_bookable_aircraft ?? true) === true)
-                    ->values();
-                $flights->setCollection($filtered);
-            }
+            // NB: bookable_only filtering is applied in SQL before pagination (see $idsSub
+            // whereExists above), so there is no post-pagination collection filtering here —
+            // that would corrupt simplePaginate page counts / "next" links.
         }
 
         // Attach booking-state flags for the UI (optional, compatibility mode only).
@@ -501,6 +550,32 @@ class FlightBoardService
      * - types_by_flight: flight_id => [ICAO,...]
      * - has_bookable_aircraft: flight_id => bool
      */
+    /**
+     * Resolve the flight↔subfleet pivot table + key names once, defensively.
+     * Returns ['table' => string|null, 'flightKey' => string, 'subfleetKey' => string].
+     * table is null if the relation can't be resolved (caller must guard).
+     */
+    protected function resolvePivotMeta(): array
+    {
+        $flightModel = new Flight();
+        foreach (['subfleets', 'subfleet'] as $tryName) {
+            if (!method_exists($flightModel, $tryName)) {
+                continue;
+            }
+            try {
+                $rel = $flightModel->{$tryName}();
+                return [
+                    'table'       => $rel->getTable(),
+                    'flightKey'   => $rel->getForeignPivotKeyName(),
+                    'subfleetKey' => $rel->getRelatedPivotKeyName(),
+                ];
+            } catch (\Throwable $e) {
+                // fall through to next relation name
+            }
+        }
+        return ['table' => null, 'flightKey' => 'flight_id', 'subfleetKey' => 'subfleet_id'];
+    }
+
     protected function resolveAircraftTypesByFlightAvailability(
         $flightCollection,
         bool $activeOnly,
@@ -513,29 +588,13 @@ class FlightBoardService
             return ['types_by_flight' => [], 'has_bookable_aircraft' => []];
         }
 
-        $flightModel = new Flight();
-        $pivotTable = null;
-        $pivotFlightKey = 'flight_id';
-        $pivotSubfleetKey = 'subfleet_id';
-
-        foreach (['subfleets', 'subfleet'] as $tryName) {
-            if (!method_exists($flightModel, $tryName)) {
-                continue;
-            }
-            try {
-                $rel = $flightModel->{$tryName}();
-                $pivotTable       = $rel->getTable();
-                $pivotFlightKey   = $rel->getForeignPivotKeyName();
-                $pivotSubfleetKey = $rel->getRelatedPivotKeyName();
-                break;
-            } catch (\Throwable $e) {
-                // fall through to next relation name
-            }
-        }
-
-        if (!$pivotTable) {
+        $pivot = $this->resolvePivotMeta();
+        if (!$pivot['table']) {
             return ['types_by_flight' => [], 'has_bookable_aircraft' => []];
         }
+        $pivotTable       = $pivot['table'];
+        $pivotFlightKey   = $pivot['flightKey'];
+        $pivotSubfleetKey = $pivot['subfleetKey'];
 
         $pivotRows = DB::table($pivotTable)
             ->whereIn($pivotFlightKey, $flightIds)
