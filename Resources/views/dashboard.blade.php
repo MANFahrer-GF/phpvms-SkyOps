@@ -250,13 +250,48 @@ html.ap-light .so-db-card:hover{border-color:rgba(59,130,246,.35);box-shadow:0 8
                                 $blockMin = (int)($p->flight_time ?? 0);
                                 $blockFmt = sprintf('%d:%02d', intdiv($blockMin, 60), $blockMin % 60);
 
+                                $createdAtHuman = '—';
+                                if (filled($p->created_at)) {
+                                    try {
+                                        $createdAtHuman = \Illuminate\Support\Carbon::parse($p->created_at)->diffForHumans(null, true, true);
+                                    } catch (\Throwable $e) {
+                                        $createdAtHuman = (string) $p->created_at;
+                                    }
+                                }
+
+                                $distanceDisplay = '—';
+                                if ($hasDist && !blank($p->distance)) {
+                                    try {
+                                        if (is_object($p->distance) && method_exists($p->distance, 'local')) {
+                                            $distanceDisplay = $p->distance->local(0);
+                                        } elseif (is_numeric($p->distance)) {
+                                            $distanceDisplay = number_format((float) $p->distance, 0, '.', '');
+                                        }
+                                    } catch (\Throwable $e) {
+                                        $distanceDisplay = '—';
+                                    }
+                                }
+
+                                $fuelDisplay = '—';
+                                if (config('skyops.features.show_fuel', true) && !blank($p->fuel_used)) {
+                                    try {
+                                        if (is_object($p->fuel_used) && method_exists($p->fuel_used, 'local')) {
+                                            $fuelDisplay = $p->fuel_used->local(0);
+                                        } elseif (is_numeric($p->fuel_used)) {
+                                            $fuelDisplay = number_format((float) $p->fuel_used, 0, '.', '');
+                                        }
+                                    } catch (\Throwable $e) {
+                                        $fuelDisplay = '—';
+                                    }
+                                }
+
                                 // Landing rate — use config-driven thresholds via SkyOpsHelper
                                 $lrRaw = $hasLR ? ($p->landing_rate ?? null) : null;
                                 $lr = ($lrRaw !== null) ? SkyOpsHelper::landingRate((float)$lrRaw) : null;
                             @endphp
                             <tr>
                                 <td>
-                                    <span class="so-db-act-time">{{ $p->created_at ? $p->created_at->diffForHumans(null, true, true) : '—' }}</span>
+                                    <span class="so-db-act-time">{{ $createdAtHuman }}</span>
                                 </td>
                                 <td>
                                     <span class="so-db-act-aln">{{ $p->airline->icao ?? '—' }}</span>
@@ -283,13 +318,13 @@ html.ap-light .so-db-card:hover{border-color:rgba(59,130,246,.35);box-shadow:0 8
                                 {{-- Distance — native phpVMS unit cast via ->local() --}}
                                 @if($hasDist)
                                 <td style="text-align:right;">
-                                    <span class="so-db-act-mono" style="color:var(--ap-muted);">{{ $p->distance ? $p->distance->local(0) : '—' }}</span>
+                                    <span class="so-db-act-mono" style="color:var(--ap-muted);">{{ $distanceDisplay }}</span>
                                 </td>
                                 @endif
                                 {{-- Fuel — native phpVMS unit cast via ->local() --}}
                                 @if(config('skyops.features.show_fuel', true))
                                 <td style="text-align:right;">
-                                    <span class="so-db-act-mono" style="color:var(--ap-muted);">{{ $p->fuel_used ? $p->fuel_used->local(0) : '—' }}</span>
+                                    <span class="so-db-act-mono" style="color:var(--ap-muted);">{{ $fuelDisplay }}</span>
                                 </td>
                                 @endif
                                 {{-- Landing Rate — config-driven thresholds --}}

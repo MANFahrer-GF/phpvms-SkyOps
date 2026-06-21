@@ -7,7 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.4-beta.2] — 2026-06-21
+## [1.0.4] — 2026-06-21
+
+Consolidated stable release (supersedes the unreleased `1.0.4-beta.1`/`beta.2`).
+All new behavior is **off by default** — an install upgrading from `1.0.3` sees no
+functional change until it opts in.
+
+### Added
+- **Optional phpVMS Sync Mode for Departures** (default **OFF**):
+  New config options under `departures`:
+  - `respect_phpvms_settings` (default `false`) — master switch; while `false`, the
+    departures board behaves exactly as in `1.0.3`.
+  - `bookable_only` (default `false`)
+  - `show_booking_status` (default `true`, only effective when the master switch is on)
+- When enabled, the departures board optionally honors these phpVMS operational settings
+  (each only if that phpVMS setting is itself on):
+  - `pilots.only_flights_from_current`
+  - `bids.disable_flight_on_bid`
+  - `pireps.only_aircraft_at_dpt_airport`
+  - `bids.block_aircraft`
+- Optional booking/availability badges on departures rows when sync mode is enabled.
 
 ### Fixed
 - **Fleet list showed soft-deleted aircraft**: `FleetService::getAircraftList()` and the
@@ -17,31 +36,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `whereNull(deleted_at)` guards on aircraft and subfleets, matching the rest of the module
   (`AirlineService`, `FlightBoardService`, `DashboardService`). The PIREP count/flight-time
   left join now also ignores soft-deleted PIREPs so totals stay accurate.
+- **Departures Flight Type Filter**: Corrected PAX/Cargo mapping to align with phpVMS flight
+  type enums (Cargo now correctly includes `F` and related cargo codes).
+- **Departures Filter UI**: Active filter state is now clearly visible for chips and input
+  filters; added active-filter summary badges.
 
----
-
-## [1.0.4-beta.1] — 2026-03-21
-
-### Fixed
-- **Departures Flight Type Filter**: Corrected PAX/Cargo mapping to align with phpVMS flight type enums (Cargo now correctly includes `F` and related cargo codes)
-- **Departures Filter UI**: Active filter state is now clearly visible for chips and input filters; added active-filter summary badges
-
-### Added
-- **Optional phpVMS Sync Mode for Departures** (default OFF):  
-  New config options under `departures`:
-  - `respect_phpvms_settings` (default `false`)
-  - `bookable_only` (default `false`)
-  - `show_booking_status` (default `true`)
-- **Optional booking/availability badges** on departures rows/details when sync mode is enabled
-- **Optional compatibility behavior** for:
-  - `pilots.only_flights_from_current`
-  - `bids.disable_flight_on_bid`
-  - `pireps.only_aircraft_at_dpt_airport`
-  - `bids.block_aircraft`
+### Changed
+- **Dashboard "recent activity" row hardened**: the relative-time / distance / fuel cells now
+  resolve their values defensively (handles both value objects and plain numerics, guards with
+  `try/catch`, and respects `features.show_fuel`) instead of calling `->local()` inline.
 
 ### Documentation
-- Updated `README.md` with a new section for optional Departures phpVMS sync settings
-- Updated in-app Guide (Admin → Departures) to show the new live config values
+- Updated `README.md` with a new section for the optional Departures phpVMS sync settings.
+- Updated the in-app Guide (Admin → Departures) to show the new config values.
 
 ---
 
