@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.1] — 2026-06-25
+
+### Changed
+- **Departures aircraft-type filter is now per-flight subfleet-aware.** When a flight's
+  airline + flight number is tied to one or more subfleets, the **Aircraft Type** filter
+  matches it only if one of those assigned subfleets actually operates the selected type.
+  So on VAs that scope flights by subfleet, picking e.g. `A320` returns only the genuine
+  A320 rotations — not every flight of an airline that merely owns an A320 somewhere
+  (a long-haul widebody flight assigned a widebody-only subfleet is now correctly hidden
+  from the `A320` filter). Flights with **no** subfleet assignment keep the airline-wide
+  fallback — the common case for VAs (like the author's) that do not tie individual
+  flights to subfleets. This makes the filter exactly consistent with the aircraft types
+  the board already shows per flight. Honors `aircraft_active_only`; resolved entirely in
+  SQL before pagination, so page counts stay correct.
+
+---
+
 ## [1.1.0] — 2026-06-25
 
 ### Added

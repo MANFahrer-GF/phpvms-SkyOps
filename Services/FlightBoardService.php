@@ -71,14 +71,18 @@ class FlightBoardService
         $restrictAircraftAtDeparture = $respectPhpvmsSettings && (bool) setting('pireps.only_aircraft_at_dpt_airport', false);
         $restrictBookedAircraft = $respectPhpvmsSettings && (bool) setting('bids.block_aircraft', false);
 
-        // Aircraft-type (ICAO) filter: resolve which airlines operate the selected
-        // type via subfleet → aircraft, then constrain the board to those airlines.
-        // This mirrors the airline-level type resolution the board already displays:
-        // only a handful of flights carry a per-flight subfleet assignment, so for
-        // the vast majority the displayed types come from the airline-wide fleet.
-        // An airline-scoped filter is therefore both the useful and the consistent
-        // semantics. Empty match-set → whereIn([]) → no results (honest empty board).
+        // Aircraft-type (ICAO) filter. Mirrors the board's OWN per-flight type
+        // resolution so the filter matches exactly the aircraft types it displays:
+        //   • a flight whose airline+flight_number HAS subfleet assignment(s) matches
+        //     only when one of those assigned subfleets actually contains the selected
+        //     ICAO type — a true per-flight restriction, which is what VAs that scope
+        //     their flights by subfleet expect ("give me only the A320 rotations");
+        //   • a flight with NO subfleet assignment falls back to airline-wide (does the
+        //     airline operate the type at all) — the common case for VAs like GSG that
+        //     do not tie individual flights to subfleets.
+        // $airlineIdsWithType drives only the airline-wide fallback path.
         $airlineIdsWithType = [];
+        $acFilterPivot = ['table' => null];
         if ($fltAc !== '') {
             $acTbl = (new Aircraft())->getTable();
             $sfTbl = (new Subfleet())->getTable();
@@ -91,6 +95,7 @@ class FlightBoardService
                 $acQ->where("{$acTbl}.status", 'A');
             }
             $airlineIdsWithType = $acQ->distinct()->pluck("{$sfTbl}.airline_id")->all();
+            $acFilterPivot = $this->resolvePivotMeta();
         }
 
         // Dedup subquery: one flight per airline+number+dpt_time
@@ -104,7 +109,9 @@ class FlightBoardService
             ->when($fltAirline, function ($q) use ($fltAirline) {
                 $q->whereHas('airline', fn($qa) => $qa->where('icao', $fltAirline)->orWhere('iata', $fltAirline));
             })
-            ->when($fltAc !== '', fn($q) => $q->whereIn('airline_id', $airlineIdsWithType))
+            ->when($fltAc !== '', fn($q) => $this->applyAircraftTypeFilter(
+                $q, $fltAc, $airlineIdsWithType, $acFilterPivot, $activeOnly, $flightTable
+            ))
             ->when($fltType === 'PAX', fn($q) => $q->whereIn('flight_type', $paxTypes))
             ->when($fltType === 'CARGO', fn($q) => $q->whereIn('flight_type', $cargoTypes))
             ->when(!is_null($minFtM) || !is_null($maxFtM), function ($q) use ($minFtM, $maxFtM) {
@@ -816,6 +823,65 @@ class FlightBoardService
         }
 
         return array_values(array_unique(array_diff($resolved, $cargoTypes)));
+    }
+
+    /**
+     * Constrain the departures dedup query to flights matching the selected ICAO type,
+     * mirroring the board's per-flight type resolution (see getFlightBoard()):
+     *   • flight whose airline+flight_number HAS a subfleet assignment → keep only if an
+     *     assigned subfleet contains the type (true per-flight restriction);
+     *   • flight with NO subfleet assignment → airline-wide fallback (airline operates it).
+     *
+     * Correlated EXISTS are written as raw SQL with an explicit table prefix + aliases —
+     * the proven pattern in this file — because Laravel's grammar mis-prefixes `as`
+     * aliases when a connection table-prefix is set.
+     */
+    protected function applyAircraftTypeFilter(
+        $q,
+        string $icao,
+        array $airlineIdsWithType,
+        array $pivot,
+        bool $activeOnly,
+        string $flightTable
+    ): void {
+        // No pivot relation resolvable → airline-level filter only (still empty-safe).
+        if (empty($pivot['table'])) {
+            $q->whereIn('airline_id', $airlineIdsWithType);
+            return;
+        }
+
+        $pfx = DB::getTablePrefix();
+        $ft  = $pfx . $flightTable;                 // e.g. phpvmsflights (outer table, unaliased)
+        $pv  = $pfx . $pivot['table'];              // e.g. phpvmsflight_subfleet
+        $ac  = $pfx . (new Aircraft())->getTable(); // e.g. phpvmsaircraft
+        $fk  = $pivot['flightKey'];                 // e.g. flight_id
+        $sk  = $pivot['subfleetKey'];               // e.g. subfleet_id
+        $statusClause = $activeOnly ? " AND ac.status = 'A'" : '';
+
+        $q->where(function ($w) use ($icao, $airlineIdsWithType, $ft, $pv, $ac, $fk, $sk, $statusClause) {
+            // Path 1 — this airline+flight_number is assigned a subfleet containing the type.
+            $w->whereRaw(
+                "EXISTS (SELECT 1 FROM {$pv} sfp"
+                . " JOIN {$ft} kf ON kf.id = sfp.{$fk}"
+                . " JOIN {$ac} ac ON ac.subfleet_id = sfp.{$sk}"
+                . " WHERE kf.airline_id = {$ft}.airline_id"
+                . " AND kf.flight_number = {$ft}.flight_number"
+                . " AND ac.deleted_at IS NULL AND ac.icao = ?{$statusClause})",
+                [$icao]
+            );
+
+            // Path 2 — no subfleet assignment for this airline+number → airline-wide fallback.
+            if (!empty($airlineIdsWithType)) {
+                $ids = implode(',', array_map('intval', $airlineIdsWithType));
+                $w->orWhereRaw(
+                    "({$ft}.airline_id IN ({$ids})"
+                    . " AND NOT EXISTS (SELECT 1 FROM {$pv} sfp2"
+                    . " JOIN {$ft} kf2 ON kf2.id = sfp2.{$fk}"
+                    . " WHERE kf2.airline_id = {$ft}.airline_id"
+                    . " AND kf2.flight_number = {$ft}.flight_number))"
+                );
+            }
+        });
     }
 
     /**
