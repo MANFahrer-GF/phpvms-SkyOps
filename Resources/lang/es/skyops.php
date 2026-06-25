@@ -122,6 +122,8 @@ return [
     'dep_airline' => 'Aerolínea',
     'dep_departure' => 'Salida',
     'dep_arrival' => 'Llegada',
+    'dep_aircraft' => 'Tipo de avión',
+    'dep_aircraft_all' => 'Todos los tipos',
     'dep_flight_time' => 'Tiempo de vuelo — mín / máx',
     'dep_flight_type' => 'Tipo de vuelo',
     'dep_h_min' => 'h mín',

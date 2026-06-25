@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] — 2026-06-25
+
+### Added
+- **Departures board — Aircraft-type (ICAO) filter.** The flight search now has an
+  **Aircraft Type** dropdown next to Airline / Departure / Arrival. It lists every ICAO
+  type present in your fleet (e.g. `A388 — Airbus A380-800`, `B738 — Boeing 737-800`),
+  each with a human-readable name and the number of airframes of that type, so a pilot
+  can tell at a glance what a code stands for. Selecting a type narrows the board to
+  flights operated by an airline that flies that type, auto-submits, and is reflected in
+  the active-filter chips and the Reset button. Translated in all 9 languages
+  (`dep_aircraft`, `dep_aircraft_all`).
+
+  Resolution is airline-level (subfleet → aircraft → ICAO), matching the aircraft types
+  the board already displays per flight — the meaningful granularity for VAs whose
+  flights are not individually tied to a subfleet. The dropdown and the filter both honor
+  the `aircraft_active_only` setting; a type that no active airline operates yields an
+  empty board rather than a misleading result.
+
+---
+
 ## [1.0.4] — 2026-06-21
 
 Consolidated stable release (supersedes the unreleased `1.0.4-beta.1`/`beta.2`).

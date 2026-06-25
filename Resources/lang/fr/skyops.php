@@ -117,6 +117,8 @@ return [
     'dep_utc_time'    => 'UTC · :time',
     'dep_departure'   => 'Départ',
     'dep_arrival'     => 'Arrivée',
+    'dep_aircraft'    => "Type d'avion",
+    'dep_aircraft_all' => 'Tous les types',
     'dep_flight_time' => 'Temps de vol — min / max',
     'dep_flight_type' => 'Type de vol',
     'dep_all'         => 'Tous',

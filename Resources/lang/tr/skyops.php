@@ -122,6 +122,8 @@ return [
     'dep_airline' => 'Airline',
     'dep_departure' => 'Kalkış',
     'dep_arrival' => 'Varış',
+    'dep_aircraft' => 'Uçak Tipi',
+    'dep_aircraft_all' => 'Tüm tipler',
     'dep_flight_time' => 'Uçuş süresi — min / maks',
     'dep_flight_type' => 'Uçuş tipi',
     'dep_h_min' => 'h min',

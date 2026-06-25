@@ -25,6 +25,7 @@
     $curAirline = strtoupper(trim((string) request('airline', '')));
     $curDep     = strtoupper(trim((string) request('dep', '')));
     $curArr     = strtoupper(trim((string) request('arr', '')));
+    $curAc      = strtoupper(trim((string) request('ac', '')));
 
     $hasMin = $activeMin !== null && $activeMin !== '' && (float) $activeMin > 0;
     $hasMax = $activeMax !== null && $activeMax !== '';
@@ -33,6 +34,7 @@
     if ($curAirline !== '') $activeFilterLabels[] = 'Airline: ' . $curAirline;
     if ($curDep !== '')     $activeFilterLabels[] = __('skyops::skyops.dep_departure') . ': ' . $curDep;
     if ($curArr !== '')     $activeFilterLabels[] = __('skyops::skyops.dep_arrival') . ': ' . $curArr;
+    if ($curAc !== '')      $activeFilterLabels[] = __('skyops::skyops.dep_aircraft') . ': ' . $curAc;
     if ($fltType !== '')    $activeFilterLabels[] = __('skyops::skyops.dep_flight_type') . ': ' . $fltType;
     if ($hasMin && $hasMax) $activeFilterLabels[] = __('skyops::skyops.dep_flight_time') . ': ' . $activeMin . 'h–' . $activeMax . 'h';
     elseif ($hasMin)        $activeFilterLabels[] = __('skyops::skyops.dep_flight_time') . ': ≥' . $activeMin . 'h';
@@ -228,6 +230,20 @@ html.ap-light .so-fb-type-chip.so-fb-chip-on{background:var(--ap-blue)!important
                         <option value="{{ $ap->id }}">{{ $ap->id }} — {{ $ap->name }}</option>
                     @endforeach
                 </datalist>
+            </div>
+
+            {{-- Aircraft type (ICAO) --}}
+            <div class="col-6 col-md-3 col-lg-2">
+                <div class="so-filter-label">{{ __('skyops::skyops.dep_aircraft') }}</div>
+                <select class="so-select {{ $curAc !== '' ? 'so-fb-input-on' : '' }}" name="ac"
+                        style="width:100%;" onchange="document.getElementById('soFbForm').submit()">
+                    <option value="">{{ __('skyops::skyops.dep_aircraft_all') }}</option>
+                    @foreach($aircraftTypeOptions as $opt)
+                        <option value="{{ $opt->icao }}" @selected($curAc === strtoupper($opt->icao))>
+                            {{ $opt->icao }}@if($opt->name) — {{ $opt->name }}@endif ({{ $opt->count }})
+                        </option>
+                    @endforeach
+                </select>
             </div>
 
             {{-- Flight time slider --}}

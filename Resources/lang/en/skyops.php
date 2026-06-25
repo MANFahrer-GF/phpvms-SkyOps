@@ -144,6 +144,8 @@ return [
     'dep_airline'       => 'Airline',
     'dep_departure'     => 'Departure',
     'dep_arrival'       => 'Arrival',
+    'dep_aircraft'      => 'Aircraft Type',
+    'dep_aircraft_all'  => 'All Types',
     'dep_flight_time'   => 'Flight Time — from / to',
     'dep_flight_type'   => 'Flight Type',
     'dep_h_min'         => 'h min',

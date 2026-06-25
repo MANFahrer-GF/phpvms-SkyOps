@@ -93,6 +93,7 @@ class SkyOpsController extends Controller
             'dep'      => 'nullable|string|max:10',
             'arr'      => 'nullable|string|max:10',
             'type'     => 'nullable|string|max:10',
+            'ac'       => 'nullable|string|max:10',
             'min_ft_h' => 'nullable|numeric|min:0|max:24',
             'max_ft_h' => 'nullable|numeric|min:0|max:24',
             'page'     => 'nullable|integer|min:1',

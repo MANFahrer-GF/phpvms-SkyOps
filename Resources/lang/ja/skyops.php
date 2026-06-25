@@ -122,6 +122,8 @@ return [
     'dep_airline' => 'Airline',
     'dep_departure' => '出発',
     'dep_arrival' => '到着',
+    'dep_aircraft' => '機材',
+    'dep_aircraft_all' => 'すべての機材',
     'dep_flight_time' => '飛行時間 — 最小 / 最大',
     'dep_flight_type' => 'フライトタイプ',
     'dep_h_min' => 'h min',

@@ -36,6 +36,7 @@ class FlightBoardService
         $fltDep     = strtoupper(trim($filters['dep'] ?? ''));
         $fltArr     = strtoupper(trim($filters['arr'] ?? ''));
         $fltType    = strtoupper(trim($filters['type'] ?? ''));
+        $fltAc      = strtoupper(trim($filters['ac'] ?? ''));
         $cargoTypes = $this->cargoFlightTypes();
         $paxTypes   = $this->paxFlightTypes($cargoTypes);
         $minFtM     = $this->toMinutes($filters['min_ft_h'] ?? null);
@@ -70,6 +71,28 @@ class FlightBoardService
         $restrictAircraftAtDeparture = $respectPhpvmsSettings && (bool) setting('pireps.only_aircraft_at_dpt_airport', false);
         $restrictBookedAircraft = $respectPhpvmsSettings && (bool) setting('bids.block_aircraft', false);
 
+        // Aircraft-type (ICAO) filter: resolve which airlines operate the selected
+        // type via subfleet → aircraft, then constrain the board to those airlines.
+        // This mirrors the airline-level type resolution the board already displays:
+        // only a handful of flights carry a per-flight subfleet assignment, so for
+        // the vast majority the displayed types come from the airline-wide fleet.
+        // An airline-scoped filter is therefore both the useful and the consistent
+        // semantics. Empty match-set → whereIn([]) → no results (honest empty board).
+        $airlineIdsWithType = [];
+        if ($fltAc !== '') {
+            $acTbl = (new Aircraft())->getTable();
+            $sfTbl = (new Subfleet())->getTable();
+            $acQ = DB::table($acTbl)
+                ->join($sfTbl, "{$acTbl}.subfleet_id", '=', "{$sfTbl}.id")
+                ->whereNull("{$acTbl}.deleted_at")
+                ->whereNull("{$sfTbl}.deleted_at")
+                ->where("{$acTbl}.icao", $fltAc);
+            if ($activeOnly) {
+                $acQ->where("{$acTbl}.status", 'A');
+            }
+            $airlineIdsWithType = $acQ->distinct()->pluck("{$sfTbl}.airline_id")->all();
+        }
+
         // Dedup subquery: one flight per airline+number+dpt_time
         $idsSub = Flight::query()
             ->selectRaw('MIN(id) as id')
@@ -81,6 +104,7 @@ class FlightBoardService
             ->when($fltAirline, function ($q) use ($fltAirline) {
                 $q->whereHas('airline', fn($qa) => $qa->where('icao', $fltAirline)->orWhere('iata', $fltAirline));
             })
+            ->when($fltAc !== '', fn($q) => $q->whereIn('airline_id', $airlineIdsWithType))
             ->when($fltType === 'PAX', fn($q) => $q->whereIn('flight_type', $paxTypes))
             ->when($fltType === 'CARGO', fn($q) => $q->whereIn('flight_type', $cargoTypes))
             ->when(!is_null($minFtM) || !is_null($maxFtM), function ($q) use ($minFtM, $maxFtM) {
@@ -491,6 +515,29 @@ class FlightBoardService
             ->limit(config('skyops.airport_options_limit', 3000))
             ->get();
 
+        // Aircraft-type filter options: distinct ICAO types present in the fleet,
+        // each enriched with a human-readable name + airframe count so a pilot can
+        // tell at a glance what aircraft the code stands for.
+        $acTbl = (new Aircraft())->getTable();
+        $acTypeQuery = DB::table($acTbl)
+            ->whereNull("{$acTbl}.deleted_at")
+            ->whereNotNull("{$acTbl}.icao")
+            ->where("{$acTbl}.icao", '!=', '');
+        if ($activeOnly) {
+            $acTypeQuery->where("{$acTbl}.status", 'A');
+        }
+        $acTypeNames = $this->aircraftTypeNames();
+        $aircraftTypeOptions = $acTypeQuery
+            ->select("{$acTbl}.icao", DB::raw('COUNT(*) as n'))
+            ->groupBy("{$acTbl}.icao")
+            ->orderBy("{$acTbl}.icao")
+            ->get()
+            ->map(fn($r) => (object) [
+                'icao'  => $r->icao,
+                'name'  => $acTypeNames[strtoupper($r->icao)] ?? null,
+                'count' => (int) $r->n,
+            ]);
+
         // Route detection
         $hasShow     = Route::has('frontend.flights.show');
         $airlineShow = Route::has('frontend.airlines.show');
@@ -506,6 +553,7 @@ class FlightBoardService
             'airportsById'   => $airportsById,
             'airlineOptions' => $airlineOptions,
             'airportOptions' => $airportOptions,
+            'aircraftTypeOptions' => $aircraftTypeOptions,
             'hasShow'        => $hasShow,
             'airlineShow'    => $airlineShow,
             '_debug_type_source' => $typeSource,
@@ -522,6 +570,7 @@ class FlightBoardService
             'fltDep'         => $fltDep,
             'fltArr'         => $fltArr,
             'fltType'        => $fltType,
+            'fltAc'          => $fltAc,
             'minHVal'        => $minHVal,
             'maxHVal'        => $maxHVal,
             'activeMin'      => $activeMin,
@@ -767,6 +816,65 @@ class FlightBoardService
         }
 
         return array_values(array_unique(array_diff($resolved, $cargoTypes)));
+    }
+
+    /**
+     * Map common ICAO aircraft type codes to a human-readable name.
+     *
+     * Used only to label the aircraft-type filter dropdown so a pilot can tell
+     * what a code stands for. Unknown codes simply fall back to the raw ICAO in
+     * the view, so this map never needs to be exhaustive — extend as the fleet
+     * grows. Keys are upper-case ICAO codes.
+     */
+    protected function aircraftTypeNames(): array
+    {
+        return [
+            // Airbus
+            'A306' => 'Airbus A300-600', 'A310' => 'Airbus A310',
+            'A318' => 'Airbus A318', 'A319' => 'Airbus A319', 'A320' => 'Airbus A320', 'A321' => 'Airbus A321',
+            'A19N' => 'Airbus A319neo', 'A20N' => 'Airbus A320neo', 'A21N' => 'Airbus A321neo',
+            'A332' => 'Airbus A330-200', 'A333' => 'Airbus A330-300', 'A337' => 'Airbus A330-700 Beluga',
+            'A338' => 'Airbus A330-800', 'A339' => 'Airbus A330-900',
+            'A342' => 'Airbus A340-200', 'A343' => 'Airbus A340-300', 'A345' => 'Airbus A340-500', 'A346' => 'Airbus A340-600',
+            'A359' => 'Airbus A350-900', 'A35K' => 'Airbus A350-1000', 'A388' => 'Airbus A380-800',
+            'A400' => 'Airbus A400M Atlas', 'A109' => 'Agusta A109', 'A139' => 'AgustaWestland AW139', 'H145' => 'Airbus H145',
+            // Boeing
+            'B712' => 'Boeing 717', 'B722' => 'Boeing 727-200',
+            'B732' => 'Boeing 737-200', 'B733' => 'Boeing 737-300', 'B734' => 'Boeing 737-400', 'B735' => 'Boeing 737-500',
+            'B736' => 'Boeing 737-600', 'B737' => 'Boeing 737-700', 'B738' => 'Boeing 737-800', 'B739' => 'Boeing 737-900',
+            'B37M' => 'Boeing 737 MAX 7', 'B38M' => 'Boeing 737 MAX 8', 'B39M' => 'Boeing 737 MAX 9', 'B3XM' => 'Boeing 737 MAX 10',
+            'B742' => 'Boeing 747-200', 'B743' => 'Boeing 747-300', 'B744' => 'Boeing 747-400', 'B748' => 'Boeing 747-8',
+            'B752' => 'Boeing 757-200', 'B753' => 'Boeing 757-300',
+            'B762' => 'Boeing 767-200', 'B763' => 'Boeing 767-300', 'B764' => 'Boeing 767-400', 'B76F' => 'Boeing 767-300F',
+            'B772' => 'Boeing 777-200', 'B77L' => 'Boeing 777-200LR / Freighter', 'B77W' => 'Boeing 777-300ER',
+            'B788' => 'Boeing 787-8', 'B789' => 'Boeing 787-9', 'B78X' => 'Boeing 787-10',
+            // Embraer
+            'E135' => 'Embraer ERJ-135', 'E145' => 'Embraer ERJ-145',
+            'E170' => 'Embraer 170', 'E175' => 'Embraer 175', 'E190' => 'Embraer 190', 'E195' => 'Embraer 195',
+            'E290' => 'Embraer E190-E2', 'E295' => 'Embraer E195-E2', 'E55P' => 'Embraer Phenom 300',
+            // Other airliners / regionals
+            'AT72' => 'ATR 72', 'AT76' => 'ATR 72-600', 'AT75' => 'ATR 72-500',
+            'DH8D' => 'Bombardier Dash 8 Q400', 'CRJ7' => 'Bombardier CRJ700', 'CRJ9' => 'Bombardier CRJ900', 'CRJX' => 'Bombardier CRJ1000',
+            'B463' => 'BAe 146-300', 'RJ85' => 'Avro RJ85', 'F28' => 'Fokker F28', 'F70' => 'Fokker 70', 'F100' => 'Fokker 100',
+            'MD11' => 'McDonnell Douglas MD-11', 'MD82' => 'McDonnell Douglas MD-82', 'MD88' => 'McDonnell Douglas MD-88',
+            'L101' => 'Lockheed L-1011 TriStar', 'CONC' => 'Concorde',
+            // Business jets
+            'C25C' => 'Cessna Citation CJ4', 'C525' => 'Cessna Citation CJ1', 'C56X' => 'Cessna Citation Excel',
+            'C680' => 'Cessna Citation Sovereign', 'C750' => 'Cessna Citation X',
+            'CL3'  => 'Bombardier Challenger 300', 'CL30' => 'Bombardier Challenger 300', 'CL60' => 'Bombardier Challenger 600',
+            'GLF5' => 'Gulfstream G550', 'GLF6' => 'Gulfstream G650', 'GL7T' => 'Gulfstream G700',
+            'HDJT' => 'HondaJet', 'SF50' => 'Cirrus Vision Jet', 'P180' => 'Piaggio Avanti',
+            // GA / piston / turboprop
+            'C152' => 'Cessna 152', 'C172' => 'Cessna 172', 'C182' => 'Cessna 182', 'C185' => 'Cessna 185',
+            'C208' => 'Cessna 208 Caravan', 'C414' => 'Cessna 414',
+            'BE35' => 'Beechcraft Bonanza 35', 'BE36' => 'Beechcraft Bonanza 36', 'BE58' => 'Beechcraft Baron 58',
+            'B350' => 'Beechcraft King Air 350',
+            'DA40' => 'Diamond DA40', 'DA42' => 'Diamond DA42',
+            'P28R' => 'Piper Arrow', 'PA24' => 'Piper Comanche', 'PA34' => 'Piper Seneca', 'AEST' => 'Piper Aerostar',
+            'MU2'  => 'Mitsubishi MU-2', 'TBM9' => 'Daher TBM 900', 'GA8' => 'GippsAero GA8 Airvan',
+            // Military / special
+            'EUFI' => 'Eurofighter Typhoon',
+        ];
     }
 
     /**
