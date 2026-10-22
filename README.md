@@ -1,6 +1,6 @@
 # SkyOps — Sky Operations Center for phpVMS 7
 
-**SkyOps** is a read-only operations center module for [phpVMS 7](https://phpvms.net). It gives virtual airline staff and pilots a unified view of PIREPs, fleet, pilot statistics, airline health, and scheduled departures — all in one place, with zero database migrations.
+**SkyOps** is a read-only operations center module for [phpVMS 7](https://phpvms.net). It gives virtual airline staff and pilots a unified view of PIREPs, fleet, pilot statistics, airline health, and scheduled departures — all in one place, without new tables (one migration adds a single index to the core `flights` table).
 
 ---
 
@@ -20,7 +20,7 @@
 
 **Technical highlights:**
 
-- Pure Eloquent + `DB::table()` — no raw SQL, no migrations, no new tables
+- Pure Eloquent + `DB::table()` — no new tables; one migration (v1.1.3) adds an index on `flights` for the departures board
 - Cross-database: MySQL, PostgreSQL, SQLite
 - Auto-detects table names and prefixes via phpVMS models
 - 9 languages: DE, EN, ES, FR, IT, JA, PT-PT, PT-BR, TR
@@ -65,7 +65,7 @@
 modules/SkyOps/Config/config.php
 ```
 
-SkyOps is **read-only** and runs **zero migrations** — this file only changes *how things are displayed and behave*, never your data. It is **install-owned**: a module update will **not** overwrite it, so your values survive upgrades. After editing, clear the cache (visit `/update`, or run `php artisan config:cache && php artisan cache:clear`).
+SkyOps is **read-only** (its only migration adds an index, never data) — this file only changes *how things are displayed and behave*, never your data. It is **install-owned**: a module update will **not** overwrite it, so your values survive upgrades. After editing, clear the cache (visit `/update`, or run `php artisan config:cache && php artisan cache:clear`).
 
 🇩🇪 **Deutsch** — Alle Einstellungen stehen in **einer Datei** (kein `.env` nötig):
 
@@ -73,7 +73,7 @@ SkyOps is **read-only** and runs **zero migrations** — this file only changes 
 modules/SkyOps/Config/config.php
 ```
 
-SkyOps ist **read-only** und führt **keine Migrationen** aus — diese Datei steuert nur *Anzeige und Verhalten*, nie eure Daten. Sie ist **install-eigen**: Ein Modul-Update überschreibt sie **nicht**, eure Werte bleiben erhalten. Nach Änderungen den Cache leeren (`/update` aufrufen oder `php artisan config:cache && php artisan cache:clear`).
+SkyOps ist **read-only** (die einzige Migration legt einen Index an, nie Daten) — diese Datei steuert nur *Anzeige und Verhalten*, nie eure Daten. Sie ist **install-eigen**: Ein Modul-Update überschreibt sie **nicht**, eure Werte bleiben erhalten. Nach Änderungen den Cache leeren (`/update` aufrufen oder `php artisan config:cache && php artisan cache:clear`).
 
 > **Colors & fonts / Farben & Schriften:** see the [Theming Guide](THEMING.md) — step-by-step instructions for matching SkyOps to your VA design. / siehe den [Theming-Leitfaden](THEMING.md) — Schritt für Schritt zur eigenen VA-Optik.
 

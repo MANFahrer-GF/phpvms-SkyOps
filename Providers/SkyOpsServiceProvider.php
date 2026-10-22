@@ -14,12 +14,15 @@ class SkyOpsServiceProvider extends ServiceProvider
      *
      * SkyOps uses phpVMS 7 Eloquent models directly — no custom database
      * tables or views are created. Installation is just upload + enable.
+     * Since v1.1.3 there is exactly one migration: an index on the core
+     * `flights` table for the departures board (no data is changed).
      */
     public function boot(): void
     {
         $this->registerConfig();
         $this->registerViews();
         $this->registerTranslations();
+        $this->loadMigrationsFrom(__DIR__ . '/../Database/migrations');
     }
 
     public function register(): void

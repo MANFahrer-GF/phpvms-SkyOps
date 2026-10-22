@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.3] — 2026-10-22
+
+### Added
+- **Index for the departures board** (first SkyOps migration, adds an index only — no data
+  changed): `idx_flights_board_dedup (active, visible, deleted_at, airline_id, flight_number,
+  dpt_time)` on the core `flights` table. Measured on a copy of a production VA with 190,460
+  flights: de-duplication 274 → 105 ms, unfiltered board query 509 → 431 ms. `deleted_at`
+  has to be part of it; without it MariaDB ignores the index. Built online in ~0.6 s.
+  Run `php artisan migrate --path=modules/SkyOps/Database/migrations --force` (or the phpVMS
+  module update) once after upgrading.
+
+---
+
 ## [1.1.2] — 2026-10-22
 
 ### Fixed
