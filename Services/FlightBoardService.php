@@ -10,6 +10,7 @@ use App\Models\Airport;
 use App\Models\Aircraft;
 use App\Models\Subfleet;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Modules\SkyOps\Helpers\UnitHelper; // Only used as fallback for raw numeric values
@@ -952,23 +953,29 @@ class FlightBoardService
         static $cache = null;
         if ($cache !== null) return $cache;
 
-        $total = Flight::where('active', true)->where('visible', true)->count();
-        if ($total === 0) {
-            return $cache = ['has_dpt_time' => false, 'has_arr_time' => false, 'pct_dpt' => 0, 'pct_arr' => 0];
-        }
+        // v1.1.2: three full counts over the flights table (~170 ms on ~190,000
+        // flights) ran on every board view. Whether a schedule carries times
+        // changes only with a schedule import, so the result is kept for an hour
+        // in the application cache (without one: computed per request as before).
+        return $cache = Cache::remember('skyops.time_columns', 3600, function () {
+            $total = Flight::where('active', true)->where('visible', true)->count();
+            if ($total === 0) {
+                return ['has_dpt_time' => false, 'has_arr_time' => false, 'pct_dpt' => 0, 'pct_arr' => 0];
+            }
 
-        $withDpt = Flight::where('active', true)->where('visible', true)->whereNotNull('dpt_time')->count();
-        $withArr = Flight::where('active', true)->where('visible', true)->whereNotNull('arr_time')->count();
+            $withDpt = Flight::where('active', true)->where('visible', true)->whereNotNull('dpt_time')->count();
+            $withArr = Flight::where('active', true)->where('visible', true)->whereNotNull('arr_time')->count();
 
-        $pctDpt = $total > 0 ? ($withDpt / $total) : 0;
-        $pctArr = $total > 0 ? ($withArr / $total) : 0;
+            $pctDpt = $total > 0 ? ($withDpt / $total) : 0;
+            $pctArr = $total > 0 ? ($withArr / $total) : 0;
 
-        return $cache = [
-            'has_dpt_time' => $pctDpt > 0.10,  // >10% have departure times
-            'has_arr_time' => $pctArr > 0.10,   // >10% have arrival times
-            'pct_dpt'      => round($pctDpt * 100),
-            'pct_arr'      => round($pctArr * 100),
-        ];
+            return [
+                'has_dpt_time' => $pctDpt > 0.10,  // >10% have departure times
+                'has_arr_time' => $pctArr > 0.10,   // >10% have arrival times
+                'pct_dpt'      => round($pctDpt * 100),
+                'pct_arr'      => round($pctArr * 100),
+            ];
+        });
     }
 
     /**

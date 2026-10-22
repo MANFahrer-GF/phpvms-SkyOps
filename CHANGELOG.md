@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.2] — 2026-10-22
+
+### Fixed
+- **Fleet page ~1.5 s faster.** The aircraft list joined every PIREP row and grouped by 14
+  aircraft/airline columns — ~1.6 s on a VA with ~1,650 aircraft. PIREP counts and flight
+  minutes are now summed per aircraft first and then joined: identical rows and order
+  (verified for 7 filter/sort combinations), ~20 ms. Page 2.9 s → 1.35 s (measured on a
+  copy of production).
+- **Departures board: schedule-time detection cached.** Three full counts over the flights
+  table (~170 ms) ran on every board view. The result now stays one hour in the
+  application cache; without one it is computed per request as before.
+
+### Changed
+- **Softest-landing ranking ignores values above -50 fpm.** Without a lower bound the
+  ranking crowned the value closest to zero — exactly the long float the guide itself
+  describes as a fault. Since AeroACARS 1.6.3 measures the sink rate from the height trace,
+  the ranking would otherwise reliably reward the longest float. (Live on GSG since
+  2026-08-14, now part of the release.)
+- **`features.show_finance_link` can be set via `.env`** (`SKYOPS_SHOW_FINANCE_LINK`,
+  default still `false`).
+
+---
+
 ## [1.1.1] — 2026-06-25
 
 ### Changed

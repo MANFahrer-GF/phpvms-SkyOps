@@ -443,7 +443,7 @@ return [
         'show_landing_rate'     => true,
         'show_fuel'             => true,
         'featured_destinations' => false,
-        'show_finance_link'     => false,
+        'show_finance_link'     => env('SKYOPS_SHOW_FINANCE_LINK', false),
     ],
 
     /*

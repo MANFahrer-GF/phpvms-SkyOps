@@ -121,7 +121,16 @@ class PilotStatsService
         if ($hasLR) {
             $selectCommon[] = DB::raw('AVG(landing_rate) AS lr_avg');
             $selectCommon[] = DB::raw('MIN(CASE WHEN landing_rate < 0 THEN landing_rate END) AS lr_hardest');
-            $selectCommon[] = DB::raw('MAX(CASE WHEN landing_rate < 0 THEN landing_rate END) AS lr_softest');
+            // Seit AeroACARS 1.6.3: Untergrenze fuer die Soft-Land-Wertung. Ohne sie kuert
+            // die Rangliste den Wert am naechsten an null — also genau das
+            // lange Schweben, das der eigene Guide-Text als Fehler
+            // beschreibt ("Werte extrem nah an 0 fpm ... sind oft ein
+            // Zeichen fuer uebermaessig langes Flaren"). Bisher gewann hier
+            // meist ein Messartefakt des Simulator-Instruments; seit die
+            // Sinkrate aus dem Hoehenverlauf kommt, gewaenne verlaesslich
+            // der Schwebe-Weltmeister. 50 fpm ist die Grenze, unter der
+            // keine echte Landung mehr liegt.
+            $selectCommon[] = DB::raw('MAX(CASE WHEN landing_rate < -50 THEN landing_rate END) AS lr_softest');
         }
 
         // Aggregate per period per user
