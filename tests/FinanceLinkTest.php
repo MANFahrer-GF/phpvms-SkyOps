@@ -120,6 +120,15 @@ class FinanceLinkTest extends TestCase
         $this->assertFalse(FinanceLinkHelper::visible($this->pilot));
     }
 
+    public function test_empty_auto_value_keeps_detection_on(): void
+    {
+        $this->setFinanceForAll(true);
+        config()->set('skyops.features.finance_link_auto', '');
+        $this->assertTrue(FinanceLinkHelper::visible($this->pilot));
+        config()->set('skyops.features.finance_link_auto', null);
+        $this->assertTrue(FinanceLinkHelper::visible($this->pilot));
+    }
+
     public function test_old_published_config_without_auto_key_still_detects(): void
     {
         $this->setFinanceForAll(true);

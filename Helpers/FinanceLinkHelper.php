@@ -26,7 +26,8 @@ class FinanceLinkHelper
         if (filter_var(config('skyops.features.show_finance_link', false), FILTER_VALIDATE_BOOLEAN)) {
             return true;
         }
-        if (!filter_var(config('skyops.features.finance_link_auto', true), FILTER_VALIDATE_BOOLEAN)) {
+        $auto = config('skyops.features.finance_link_auto', true);
+        if ($auto !== null && $auto !== '' && !filter_var($auto, FILTER_VALIDATE_BOOLEAN)) {
             return false;
         }
         if (!Route::has(self::ROUTE)) {
