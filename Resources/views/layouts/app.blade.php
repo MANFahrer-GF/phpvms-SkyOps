@@ -53,8 +53,8 @@
         <a href="{{ route('skyops.airlines') }}" class="{{ ($currentPage ?? '') === 'airlines' ? 'active' : '' }}">
             {{ __('skyops::skyops.airlines') }}
         </a>
-        @if(config('skyops.features.show_finance_link', false))
-        <a href="/dynamicfares/finance" class="">
+        @if(\Modules\SkyOps\Helpers\FinanceLinkHelper::visible())
+        <a href="{{ \Modules\SkyOps\Helpers\FinanceLinkHelper::url() }}" class="">
             {{ __('skyops::skyops.finance') }}
         </a>
         @endif

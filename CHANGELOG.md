@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.4] — 2026-11-19
+
+### Changed
+- **Finance Hub tab appears automatically.** SkyOps now detects DynamicFares: the tab is shown
+  when the DynamicFares finance page exists and the logged-in user may open it (same rule as
+  DynamicFares — all pilots, or only admins/staff when "Frontend finance page" is switched off
+  there). No `.env` edit is needed any more. `SKYOPS_FINANCE_LINK_AUTO=false` turns the
+  detection off; `SKYOPS_SHOW_FINANCE_LINK=true` still forces the tab. Older published
+  `config/skyops.php` files keep working (detection is on when the new key is missing).
+- The tab links to the DynamicFares route instead of a hard-coded path.
+
+### Added
+- First test suite (`tests/`, `phpunit.xml`) for the Finance Hub tab, run against a phpVMS install.
+
+---
+
 ## [1.1.3] — 2026-10-22
 
 ### Added

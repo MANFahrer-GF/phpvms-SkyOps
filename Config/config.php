@@ -443,7 +443,11 @@ return [
         'show_landing_rate'     => true,
         'show_fuel'             => true,
         'featured_destinations' => false,
+        // Finance Hub tab (DynamicFares): shown automatically when DynamicFares is active and the user may
+        // open its finance page. show_finance_link = true forces the tab; finance_link_auto = false turns
+        // the automatic detection off.
         'show_finance_link'     => env('SKYOPS_SHOW_FINANCE_LINK', false),
+        'finance_link_auto'     => env('SKYOPS_FINANCE_LINK_AUTO', true),
     ],
 
     /*

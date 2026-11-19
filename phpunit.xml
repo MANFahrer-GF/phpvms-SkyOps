@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SkyOps tests. Run from the module folder:
+    PHPVMS_ROOT=/path/to/phpvms /path/to/phpvms/vendor/bin/phpunit -c phpunit.xml
+  Needs a phpVMS 7 install with a test database (name contains "test"/"sandbox" or is "phpvms7").
+  Every test runs inside a transaction that is rolled back.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         bootstrap="tests/bootstrap.php" colors="true" testdox="true" cacheDirectory="/tmp/skyopsunit.cache"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd">
+  <testsuites>
+    <testsuite name="SkyOps">
+      <directory suffix="Test.php">tests</directory>
+    </testsuite>
+  </testsuites>
+</phpunit>
